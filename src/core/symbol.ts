@@ -81,17 +81,17 @@ export class _Symbol {
 
 	asStruct(): StructSymbol {
 		assert(this.isStruct());
-		return this as StructSymbol;
+		return this as unknown as StructSymbol;
 	}
 
 	asFunction(): FunctionSymbol {
 		assert(this.isFunction());
-		return this as FunctionSymbol;
+		return this as unknown as FunctionSymbol;
 	}
 
 	asVariable(): VariableSymbol {
 		assert(this.isVariable());
-		return this as VariableSymbol;
+		return this as unknown as VariableSymbol;
 	}
 
 	resolvedType(): Type {
