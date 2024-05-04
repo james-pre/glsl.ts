@@ -28,7 +28,6 @@ export class Diagnostic {
 		this.kind = kind;
 		this.range = range;
 		this.text = text;
-		this.noteRange = null;
 		this.noteText = '';
 	}
 }
@@ -316,6 +315,5 @@ export class Log {
 		this.unusedSymbols = [];
 		this.warningCount = 0;
 		this.errorCount = 0;
-		this._prevErrorRange = null;
 	}
 }

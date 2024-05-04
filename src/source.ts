@@ -7,7 +7,7 @@ export interface LineColumn {
 }
 
 export class Source {
-	public tokens: Token[] = null;
+	public tokens: Token[];
 
 	// This maps line numbers to indices within contents
 	protected _lineOffsets: number[] = [0];

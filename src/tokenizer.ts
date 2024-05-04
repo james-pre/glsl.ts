@@ -143,7 +143,7 @@ export const enum TokenPurpose {
 export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token[] {
 	const parts: string[] = source.contents.split(_tokenRegex);
 	const tokens: Token[] = [];
-	let comments: Range[] = null;
+	let comments: Range[];
 	let prevCommentTokenCount = 0;
 	let start = 0;
 

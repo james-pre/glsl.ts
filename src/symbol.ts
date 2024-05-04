@@ -108,10 +108,6 @@ export class BaseSymbol {
 		this.name = name;
 		this.scope = scope;
 		this.flags = 0 as SymbolFlags;
-		this.comments = null;
-		this.constantValue = null;
-		this.requiredExtension = null;
-		this._resolvedType = null;
 		this.useCount = 0;
 	}
 }
@@ -150,10 +146,6 @@ export class FunctionSymbol extends BaseSymbol {
 	constructor(id: number, range: Range, name: string, scope: Scope) {
 		super(id, range, name, scope);
 		this._arguments = [];
-		this.returnType = null;
-		this.block = null;
-		this.previousOverload = null;
-		this.sibling = null;
 	}
 }
 
@@ -177,9 +169,6 @@ export class VariableSymbol extends BaseSymbol {
 	constructor(id: number, range: Range, name: string, scope: Scope, kind: VariableKind) {
 		super(id, range, name, scope);
 		this.kind = kind;
-		this.type = null;
-		this.node = null;
-		this.arrayCount = null;
 	}
 }
 

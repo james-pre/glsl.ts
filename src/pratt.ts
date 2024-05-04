@@ -127,7 +127,7 @@ export class ParserContext {
 		this.includes = [];
 		this.flags = 0 as SymbolFlags;
 		this._index = 0;
-		this._scope = null;
+		this._scope;
 	}
 }
 
@@ -138,8 +138,6 @@ export class Parselet {
 
 	constructor(precedence: Precedence) {
 		this.precedence = precedence;
-		this.prefix = null;
-		this.infix = null;
 	}
 }
 

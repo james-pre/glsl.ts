@@ -161,7 +161,7 @@ export function compile(log: Log, sources: Source[], options: CompilerOptions): 
 	}
 
 	const global = Node.createGlobal();
-	const scope = new Scope(ScopeKind.GLOBAL, null);
+	const scope = new Scope(ScopeKind.GLOBAL);
 	const data = new CompilerData(options.fileAccess);
 	const resolver = new Resolver(log, data);
 
@@ -187,7 +187,7 @@ export function compile(log: Log, sources: Source[], options: CompilerOptions): 
 
 	for (const root of _collectAllExportedFunctions(scope)) {
 		const shaderGlobal = Node.createGlobal();
-		const shaderScope = new Scope(ScopeKind.GLOBAL, null);
+		const shaderScope = new Scope(ScopeKind.GLOBAL);
 		const shaderData = new CompilerData(options.fileAccess);
 		const shaderLog = new Log();
 		const shaderResolver = new Resolver(shaderLog, shaderData);

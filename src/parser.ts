@@ -28,7 +28,7 @@ export class ParseResult {
 	}
 }
 
-export let pratt: Pratt = null;
+export let pratt: Pratt;
 
 export function typeParselet(type: Type): (v0: ParserContext, v1: Token) => Node {
 	return (context: ParserContext, token: Token) => {
@@ -398,13 +398,13 @@ export function parseFor(context: ParserContext): Node {
 	}
 
 	// Setup
-	let setup: Node = null;
+	let setup: Node;
 
 	if (!context.eat(TokenKind.SEMICOLON)) {
 		// Check for a type
 		const comments = parseLeadingComments(context);
 		const flags = parseFlags(context, VariableKind.LOCAL);
-		let type: Node = null;
+		let type: Node;
 
 		if (flags !== 0) {
 			type = parseType(context, ParseTypeMode.REPORT_ERRORS);
@@ -437,7 +437,7 @@ export function parseFor(context: ParserContext): Node {
 	}
 
 	// Test
-	let test: Node = null;
+	let test: Node;
 
 	if (!context.eat(TokenKind.SEMICOLON)) {
 		test = pratt.parse(context, Precedence.LOWEST);
@@ -452,7 +452,7 @@ export function parseFor(context: ParserContext): Node {
 	}
 
 	// Update
-	let update: Node = null;
+	let update: Node;
 
 	if (!context.eat(TokenKind.RIGHT_PARENTHESIS)) {
 		update = pratt.parse(context, Precedence.LOWEST);
@@ -501,7 +501,7 @@ export function parseIf(context: ParserContext): Node {
 		return;
 	}
 
-	let no: Node = null;
+	let no: Node;
 
 	if (context.eat(TokenKind.ELSE)) {
 		no = parseStatement(context, VariableKind.LOCAL);
@@ -556,7 +556,7 @@ export function parseWhile(context: ParserContext): Node {
 
 export function parseReturn(context: ParserContext): Node {
 	const token = context.next();
-	let value: Node = null;
+	let value: Node;
 
 	if (!context.eat(TokenKind.SEMICOLON)) {
 		const firstToken = context.current();
@@ -625,7 +625,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 
 	const range = context.current().range;
 	const block = Node.createStructBlock();
-	let variables: Node = null;
+	let variables: Node;
 
 	if (!context.expect(TokenKind.LEFT_BRACE)) {
 		return;
@@ -743,7 +743,7 @@ export function parseLeadingComments(context: ParserContext): string[] {
 	}
 
 	let nextRangeStart = firstToken.range.start;
-	let leadingComments: string[] = null;
+	let leadingComments: string[];
 
 	// Scan the comments backwards
 	for (let i = comments.length - 1; i >= 0; i = i - 1) {
@@ -847,7 +847,7 @@ export function parseStatement(context: ParserContext, mode: VariableKind): Node
 	// Try to parse a variable or function
 	const comments = parseLeadingComments(context);
 	const flags = parseFlags(context, mode);
-	let type: Node = null;
+	let type: Node;
 
 	if (context.eat(TokenKind.STRUCT)) {
 		const struct = parseStruct(context, flags, comments);
@@ -907,7 +907,7 @@ export function parseInclude(context: ParserContext, parent: Node): boolean {
 	}
 
 	// Decode the escapes
-	let path: string = null;
+	let path: string;
 
 	try {
 		path = JSON.parse(range.toString());
@@ -1043,7 +1043,7 @@ export function parseFlags(context: ParserContext, mode: VariableKind): SymbolFl
 
 export function parseType(context: ParserContext, mode: ParseTypeMode): Node {
 	const token = context.current();
-	let type: Type = null;
+	let type: Type;
 
 	switch (token.kind) {
 		case TokenKind.BOOL: {
@@ -1362,7 +1362,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 
 		// Initial value
 		let assign = context.current().range;
-		let value: Node = null;
+		let value: Node;
 
 		if (context.eat(TokenKind.ASSIGN)) {
 			const firstToken = context.current();

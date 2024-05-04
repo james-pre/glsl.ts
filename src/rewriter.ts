@@ -155,8 +155,7 @@ export class Rewriter {
 	}
 
 	_trimSymbols(node: Node): void {
-		for (let child = node.firstChild(), next: Node = null; child; child = next) {
-			next = child.nextSibling();
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			this._trimSymbols(child);
 		}
 
@@ -248,14 +247,8 @@ export class Rewriter {
 	}
 
 	_trimUnreferencedExtensions(node: Node, data: CompilerData): void {
-		for (let child = node.firstChild(), next: Node = null; child; child = next) {
-			next = child.nextSibling();
-
-			if (
-				child.kind === NodeKind.EXTENSION &&
-				!this._referencedExtensions.has(child.extensionName()) &&
-				data.extensionBehavior(child.extensionName()) === ExtensionBehavior.DEFAULT
-			) {
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
+			if (child.kind === NodeKind.EXTENSION && !this._referencedExtensions.has(child.extensionName()) && data.extensionBehavior(child.extensionName()) === 'default') {
 				child.remove();
 			}
 		}
@@ -277,8 +270,7 @@ export class Rewriter {
 	}
 
 	_compact(node: Node): void {
-		for (let child = node.firstChild(), next: Node = null; child; child = next) {
-			next = child.nextSibling();
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			this._compact(child);
 		}
 
@@ -604,11 +596,9 @@ export class Rewriter {
 
 			case NodeKind.SEQUENCE: {
 				// Remove elements without side effects
-				for (let child4 = node.firstChild(), next1: Node = null; child4 !== node.lastChild(); child4 = next1) {
-					next1 = child4.nextSibling();
-
-					if (child4.hasNoSideEffects()) {
-						child4.remove();
+				for (let child = node.firstChild(); child !== node.lastChild(); child = child.nextSibling()) {
+					if (child.hasNoSideEffects()) {
+						child.remove();
 						this._reportCodeChange();
 					}
 				}

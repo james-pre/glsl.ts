@@ -278,7 +278,69 @@ export function format(input: string, indent: string, newline: string, trailingN
 	let nesting = 0;
 	let isStartOfLine = true;
 	let tokenIndex = 0;
-	let consumeIf: (v0: (v0: TokenKind) => boolean) => boolean = null;
+
+	function consumeIf(when: (v0: TokenKind) => boolean) {
+		const token = tokens[tokenIndex];
+
+		if (!when(token.kind) || token.kind === TokenKind.END_OF_FILE) {
+			return false;
+		}
+
+		const newlines =
+			forceMultiLine === tokenIndex ? '\n' : prevKind === TokenKind.END_OF_FILE ? '' : _formatWhitespace(input.slice(prevEnd, token.range.start), indent, newline);
+		tokenIndex = tokenIndex + 1;
+		text += newlines;
+
+		if (newlines !== '') {
+			isStartOfLine = true;
+		}
+
+		if (isStartOfLine) {
+			text += indent.repeat(nesting);
+		} else if (_keepSpaceBetween(prevPrevKind, prevKind, token.kind)) {
+			text += ' ';
+		}
+
+		let slice = token.range.toString();
+
+		switch (token.kind) {
+			case TokenKind.SINGLE_LINE_COMMENT: {
+				slice = _trimSingleLineComment(slice);
+				break;
+			}
+
+			case TokenKind.MULTI_LINE_COMMENT: {
+				slice = _trimMultiLineComment(slice, input.slice(0, token.range.start), indent.repeat(nesting), newline);
+				break;
+			}
+		}
+
+		text += slice;
+		prevPrevKind = prevKind;
+		prevKind = token.kind;
+		prevEnd = token.range.end;
+		isStartOfLine = false;
+
+		switch (token.kind) {
+			case TokenKind.LEFT_BRACE: {
+				handleBraces();
+				break;
+			}
+
+			case TokenKind.LEFT_PARENTHESIS: {
+				handleParentheses();
+				break;
+			}
+
+			case TokenKind.LEFT_BRACKET: {
+				handleBrackets();
+				break;
+			}
+		}
+
+		return true;
+	}
+
 	const hasNewlineBefore: (v0: number) => boolean = (index: number) => {
 		return !_isAllWhitespace(input.slice(tokens[index - 1].range.end, tokens[index].range.start));
 	};
@@ -308,58 +370,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 
 		return false;
 	};
-	let handleStatement: () => boolean = null;
-
-	// Scan over non-block bodies until the ending ";"
-	const handleBody: () => void = () => {
-		let intended = 1;
-
-		for (let i = tokenIndex; i < tokens.length; i++) {
-			switch (tokens[i].kind) {
-				// A comment doesn't count as a body
-				case TokenKind.SINGLE_LINE_COMMENT:
-				case TokenKind.MULTI_LINE_COMMENT: {
-					continue;
-				}
-
-				case TokenKind.LEFT_BRACE: {
-					intended = 0;
-					break;
-				}
-			}
-
-			break;
-		}
-
-		nesting = nesting + intended;
-		handleStatement();
-		nesting = nesting - intended;
-	};
-
-	// "if" or "for" or "while"
-	const handleBranch: () => boolean = () => {
-		// Double-indent in parentheses unless they are followed by a newline
-		let doubleIndent = 1;
-
-		if (tokens[tokenIndex].kind === TokenKind.LEFT_PARENTHESIS && hasNewlineBefore(tokenIndex + 1)) {
-			doubleIndent = 0;
-		}
-
-		nesting = nesting + doubleIndent;
-
-		if (
-			!consumeIf((kind: TokenKind) => {
-				return kind === TokenKind.LEFT_PARENTHESIS;
-			})
-		) {
-			nesting = nesting - doubleIndent;
-			return false;
-		}
-
-		nesting = nesting - doubleIndent;
-		return true;
-	};
-	handleStatement = () => {
+	function handleStatement() {
 		// Comments don't count as a statement
 		while (
 			consumeIf((kind: TokenKind) => {
@@ -537,6 +548,56 @@ export function format(input: string, indent: string, newline: string, trailingN
 		}
 
 		return true;
+	}
+
+	// Scan over non-block bodies until the ending ";"
+	const handleBody: () => void = () => {
+		let intended = 1;
+
+		for (let i = tokenIndex; i < tokens.length; i++) {
+			switch (tokens[i].kind) {
+				// A comment doesn't count as a body
+				case TokenKind.SINGLE_LINE_COMMENT:
+				case TokenKind.MULTI_LINE_COMMENT: {
+					continue;
+				}
+
+				case TokenKind.LEFT_BRACE: {
+					intended = 0;
+					break;
+				}
+			}
+
+			break;
+		}
+
+		nesting = nesting + intended;
+		handleStatement();
+		nesting = nesting - intended;
+	};
+
+	// "if" or "for" or "while"
+	const handleBranch: () => boolean = () => {
+		// Double-indent in parentheses unless they are followed by a newline
+		let doubleIndent = 1;
+
+		if (tokens[tokenIndex].kind === TokenKind.LEFT_PARENTHESIS && hasNewlineBefore(tokenIndex + 1)) {
+			doubleIndent = 0;
+		}
+
+		nesting = nesting + doubleIndent;
+
+		if (
+			!consumeIf((kind: TokenKind) => {
+				return kind === TokenKind.LEFT_PARENTHESIS;
+			})
+		) {
+			nesting = nesting - doubleIndent;
+			return false;
+		}
+
+		nesting = nesting - doubleIndent;
+		return true;
 	};
 	const indexOfClosingBrace: () => number = () => {
 		const stack: TokenKind[] = [];
@@ -634,67 +695,6 @@ export function format(input: string, indent: string, newline: string, trailingN
 		consumeIf((kind: TokenKind) => {
 			return kind === TokenKind.RIGHT_BRACKET;
 		});
-	};
-	consumeIf = (when: (v0: TokenKind) => boolean) => {
-		const token = tokens[tokenIndex];
-
-		if (!when(token.kind) || token.kind === TokenKind.END_OF_FILE) {
-			return false;
-		}
-
-		const newlines =
-			forceMultiLine === tokenIndex ? '\n' : prevKind === TokenKind.END_OF_FILE ? '' : _formatWhitespace(input.slice(prevEnd, token.range.start), indent, newline);
-		tokenIndex = tokenIndex + 1;
-		text += newlines;
-
-		if (newlines !== '') {
-			isStartOfLine = true;
-		}
-
-		if (isStartOfLine) {
-			text += indent.repeat(nesting);
-		} else if (_keepSpaceBetween(prevPrevKind, prevKind, token.kind)) {
-			text += ' ';
-		}
-
-		let slice = token.range.toString();
-
-		switch (token.kind) {
-			case TokenKind.SINGLE_LINE_COMMENT: {
-				slice = _trimSingleLineComment(slice);
-				break;
-			}
-
-			case TokenKind.MULTI_LINE_COMMENT: {
-				slice = _trimMultiLineComment(slice, input.slice(0, token.range.start), indent.repeat(nesting), newline);
-				break;
-			}
-		}
-
-		text += slice;
-		prevPrevKind = prevKind;
-		prevKind = token.kind;
-		prevEnd = token.range.end;
-		isStartOfLine = false;
-
-		switch (token.kind) {
-			case TokenKind.LEFT_BRACE: {
-				handleBraces();
-				break;
-			}
-
-			case TokenKind.LEFT_PARENTHESIS: {
-				handleParentheses();
-				break;
-			}
-
-			case TokenKind.LEFT_BRACKET: {
-				handleBrackets();
-				break;
-			}
-		}
-
-		return true;
 	};
 
 	// Consume all tokens

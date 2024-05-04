@@ -295,8 +295,8 @@ export class Resolver {
 				// Make sure the extension is enabled if it hasn't been specified
 				const name = symbol3.requiredExtension;
 
-				if (name && !this._generatedExtensions.has(name) && this._data.extensionBehavior(name) === ExtensionBehavior.DEFAULT) {
-					this._generatedExtensions.set(name, Node.createExtension(name, ExtensionBehavior.ENABLE));
+				if (name && !this._generatedExtensions.has(name) && this._data.extensionBehavior(name) === 'default') {
+					this._generatedExtensions.set(name, Node.createExtension(name, 'enable'));
 				}
 				break;
 			}

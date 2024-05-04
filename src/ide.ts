@@ -151,11 +151,6 @@ export class SymbolQuery {
 	constructor(source: Source, index: number) {
 		this.source = source;
 		this.index = index;
-		this.resolvedType = null;
-		this.symbol = null;
-		this.range = null;
-		this.swizzleName = null;
-		this.swizzleType = null;
 	}
 }
 
@@ -219,7 +214,7 @@ export class RenameQuery {
 			this._visit(global);
 
 			// Remove overlapping ranges just in case
-			let current: Range = null;
+			let current: Range;
 			this.ranges.sort((a: Range, b: Range) => {
 				return a.source === b.source ? compare(a.start, b.start) : compare_string(b.source.name, a.source.name);
 			});
@@ -308,7 +303,6 @@ export class RenameQuery {
 		this.source = source;
 		this.index = index;
 		this.ranges = [];
-		this.symbol = null;
 	}
 }
 
@@ -349,7 +343,7 @@ export class CompletionQuery {
 	}
 
 	_addTextualCompletion(kind: string, name: string): Completion {
-		let completion: Completion = null;
+		let completion: Completion;
 
 		if (this._map.has(name)) {
 			completion = this._map.get(name);

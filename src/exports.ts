@@ -156,7 +156,7 @@ export function commandLineMain(): void {
 	};
 	const sources: Source[] = [];
 	let outputFormat: OutputFormat = 'json';
-	let outputPath: string = null;
+	let outputPath: string;
 
 	for (const arg of args) {
 		if (!arg.startsWith('-')) {
@@ -299,9 +299,9 @@ export function compileIDE(input: any, options: any = {}): any {
 			const line: number = message.line | 0;
 			const column: number = message.column | 0;
 			const ignoreDiagnostics: boolean = !!message.ignoreDiagnostics;
-			let range: Range = null;
-			let tooltip: Tooltip = null;
-			let symbol: string = null;
+			let range: Range;
+			let tooltip: Tooltip;
+			let symbol: string;
 
 			for (const source of sources) {
 				if (source.name === name) {

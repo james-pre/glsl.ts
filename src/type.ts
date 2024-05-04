@@ -226,6 +226,5 @@ export class Type {
 		this.arrayCount = arrayCount;
 		this.containsArray = false;
 		this.containsSampler = false;
-		this._arrayTypes = null;
 	}
 }
