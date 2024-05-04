@@ -1,5 +1,5 @@
 import { LineColumn, Source } from './source.js';
-import { StringIterator, string_fromCodePoints } from '../unicode.js';
+import { StringIterator, string_fromCodePoints } from './unicode.js';
 
 export class FormattedRange {
 	line: string;

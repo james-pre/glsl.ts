@@ -1,15 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { assignWithDefaults, pick } from 'utilium';
-import { API_NAME } from '../core/api.js';
-import { compile as _compile, CompilerOptions, FileAccess, isOutputFormat, isRenameSymbols, OutputFormat, RenameSymbols, typeCheck } from '../core/compiler.js';
-import { format as _format, TrailingNewline } from '../core/formatter.js';
-import { Completion, CompletionQuery, RenameQuery, Signature, SignatureQuery, SymbolQuery, SymbolsQuery, Tooltip } from '../core/ide.js';
-import { Diagnostic, DiagnosticKind, Log } from '../core/log.js';
-import { Range } from '../core/range.js';
-import { Source } from '../core/source.js';
-import { _Symbol } from '../core/symbol.js';
-import { Color, print, setColor, width, write } from '../lib/terminal.js';
+import { pick } from 'utilium';
+import { API_NAME } from './api.js';
+import { compile as _compile, CompilerOptions, FileAccess, isOutputFormat, isRenameSymbols, OutputFormat, RenameSymbols, typeCheck } from './compiler.js';
+import { format as _format, TrailingNewline } from './formatter.js';
+import { Completion, CompletionQuery, RenameQuery, Signature, SignatureQuery, SymbolQuery, SymbolsQuery, Tooltip } from './ide.js';
+import { Color, print, setColor, width, write } from './terminal.js';
+import { Diagnostic, DiagnosticKind, Log } from './log.js';
+import { Range } from './range.js';
+import { Source } from './source.js';
+import { _Symbol } from './symbol.js';
 
 export function printUsage(): void {
 	console.log(
