@@ -605,7 +605,7 @@ export class SignatureQuery {
 							}
 
 							// Try filtering by argument count
-							for (let limit = _arguments.length; limit > 0; limit = limit - 1) {
+							for (let limit = _arguments.length; limit > 0; limit--) {
 								const nextFilteredOverloads: number[] = [];
 
 								for (const index of filteredOverloads) {
@@ -817,19 +817,19 @@ export function _leadingCommentsToMarkdown(comments: string[]): string {
 
 			// Remove the comment marker
 			if (comment.startsWith('//')) {
-				start = start + 2;
+				start += 2;
 			} else if (comment.startsWith('/*')) {
-				start = start + 2;
-				end = end - 2;
+				start += 2;
+				end -= 2;
 			}
 
 			// Trim leading and trailing whitespace
 			while (start < end && comment.charCodeAt(start) === 32) {
-				start = start + 1;
+				start++;
 			}
 
 			while (end > start && comment.charCodeAt(end - 1) === 32) {
-				end = end - 1;
+				end--;
 			}
 
 			// Append the comment content

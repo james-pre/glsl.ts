@@ -118,19 +118,10 @@ export function _trimMultiLineComment(comment: string, beforeComment: string, in
 	let start = 0;
 
 	for (let i = 0; i < comment.length; i++) {
-		const c = comment[i];
-
-		if (!(c == '\n' || c == '\r')) {
-			continue;
+		if (comment[i] == '\n') {
+			lines.push(comment.slice(start, i));
+			start = i + 1;
 		}
-
-		lines.push(comment.slice(start, i));
-
-		if (c == '\r' && i + 1 < comment.length && comment[i + 1] == '\n') {
-			i++;
-		}
-
-		start = i + 1;
 	}
 
 	lines.push(comment.slice(start));
@@ -152,14 +143,13 @@ export function _trimMultiLineComment(comment: string, beforeComment: string, in
 			continue;
 		}
 
-		let i1 = 0;
-		const n1 = line.length;
+		let i = 0;
 
-		while (i1 < n1 && i1 < commonPrefix.length && line.charCodeAt(i1) === commonPrefix.charCodeAt(i1)) {
-			i1 = i1 + 1;
+		while (i < line.length && i < commonPrefix.length && line[i] == commonPrefix[i]) {
+			i++;
 		}
 
-		commonPrefix = commonPrefix.slice(0, i1);
+		commonPrefix = commonPrefix.slice(0, i);
 	}
 
 	// Join the lines together
@@ -200,6 +190,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 	let nesting = 0;
 	let isStartOfLine = true;
 	let tokenIndex = 0;
+	let forceMultiLine = -1;
 
 	function consumeIf(when: (v0: TokenKind) => boolean) {
 		const token = tokens[tokenIndex];
@@ -209,7 +200,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 		}
 
 		const newlines = forceMultiLine === tokenIndex ? '\n' : prevKind == TokenKind.EOF ? '' : _formatWhitespace(input.slice(prevEnd, token.range.start), newline);
-		tokenIndex = tokenIndex + 1;
+		tokenIndex++;
 		text += newlines;
 
 		if (newlines !== '') {
@@ -242,28 +233,92 @@ export function format(input: string, indent: string, newline: string, trailingN
 		isStartOfLine = false;
 
 		switch (token.kind) {
-			case TokenKind.LEFT_BRACE: {
-				handleBraces();
-				break;
-			}
+			case TokenKind.LEFT_BRACE:
+				let rightBrace: number = -1;
 
-			case TokenKind.LEFT_PARENTHESIS: {
-				handleParentheses();
-				break;
-			}
+				const stack: TokenKind[] = [];
+				let i = tokenIndex;
 
-			case TokenKind.LEFT_BRACKET: {
-				handleBrackets();
+				while (i < tokens.length) {
+					const kind = tokens[i].kind;
+
+					switch (kind) {
+						case TokenKind.LEFT_BRACE:
+						case TokenKind.LEFT_BRACKET:
+						case TokenKind.LEFT_PARENTHESIS:
+							stack.push(kind);
+							break;
+
+						case TokenKind.RIGHT_BRACE:
+							if (stack.length === 0) {
+								rightBrace = i;
+							}
+
+							if (stack.pop() !== TokenKind.LEFT_BRACE) {
+								rightBrace = -1;
+							}
+							break;
+
+						case TokenKind.RIGHT_BRACKET:
+							if (!stack.length || stack.pop() !== TokenKind.LEFT_BRACKET) {
+								rightBrace = -1;
+							}
+							break;
+
+						case TokenKind.RIGHT_PARENTHESIS:
+							if (!stack.length || stack.pop() !== TokenKind.LEFT_PARENTHESIS) {
+								rightBrace = -1;
+							}
+							break;
+					}
+
+					i++;
+				}
+
+				const isMultiLine = rightBrace !== -1 && input.slice(tokens[tokenIndex - 1].range.end, tokens[rightBrace].range.start).includes('\n');
+
+				if (isMultiLine) {
+					forceMultiLine = tokenIndex;
+				}
+
+				nesting++;
+
+				while (handleStatement()) {}
+
+				nesting--;
+
+				if (isMultiLine) {
+					forceMultiLine = tokenIndex;
+				}
+
+				consumeIf((kind: TokenKind) => kind === TokenKind.RIGHT_BRACE);
+
 				break;
-			}
+
+			case TokenKind.LEFT_PARENTHESIS:
+				nesting++;
+
+				while (consumeIf((kind: TokenKind) => kind !== TokenKind.RIGHT_PARENTHESIS)) {}
+
+				nesting--;
+				consumeIf((kind: TokenKind) => kind === TokenKind.RIGHT_PARENTHESIS);
+
+				break;
+
+			case TokenKind.LEFT_BRACKET:
+				nesting++;
+
+				while (consumeIf((kind: TokenKind) => kind !== TokenKind.RIGHT_BRACKET)) {}
+
+				nesting--;
+				consumeIf((kind: TokenKind) => kind === TokenKind.RIGHT_BRACKET);
+				break;
 		}
 
 		return true;
 	}
 
-	const hasNewlineBefore: (v0: number) => boolean = (index: number) => {
-		return !onlyWhitespace.test(input.slice(tokens[index - 1].range.end, tokens[index].range.start));
-	};
+	const hasNewlineBefore: (v0: number) => boolean = (index: number) => !onlyWhitespace.test(input.slice(tokens[index - 1].range.end, tokens[index].range.start));
 	const isStatementEnd: (v0: TokenKind, v1: boolean) => boolean = (kind: TokenKind, isFirst: boolean) => {
 		switch (kind) {
 			case TokenKind.SEMICOLON:
@@ -292,11 +347,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 	};
 	function handleStatement() {
 		// Comments don't count as a statement
-		while (
-			consumeIf((kind: TokenKind) => {
-				return kind === TokenKind.SINGLE_LINE_COMMENT || kind === TokenKind.MULTI_LINE_COMMENT;
-			})
-		) {}
+		while (consumeIf((kind: TokenKind) => kind === TokenKind.SINGLE_LINE_COMMENT || kind === TokenKind.MULTI_LINE_COMMENT)) {}
 
 		switch (tokens[tokenIndex].kind) {
 			case TokenKind.EOF:
@@ -306,16 +357,12 @@ export function format(input: string, indent: string, newline: string, trailingN
 
 			case TokenKind.IMPORT:
 			case TokenKind.EXPORT: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 				break;
 			}
 
 			case TokenKind.IF: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 
 				if (handleBranch()) {
 					handleBody();
@@ -330,9 +377,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 
 			case TokenKind.FOR:
 			case TokenKind.WHILE: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 
 				if (handleBranch()) {
 					handleBody();
@@ -341,46 +386,34 @@ export function format(input: string, indent: string, newline: string, trailingN
 			}
 
 			case TokenKind.DO: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 				handleBody();
 
-				if (
-					consumeIf((kind: TokenKind) => {
-						return kind === TokenKind.WHILE;
-					})
-				) {
+				if (consumeIf((kind: TokenKind) => kind == TokenKind.WHILE)) {
 					handleBranch();
-					consumeIf((kind: TokenKind) => {
-						return kind === TokenKind.SEMICOLON;
-					});
+					consumeIf((kind: TokenKind) => kind == TokenKind.SEMICOLON);
 				}
 				break;
 			}
 
 			case TokenKind.ELSE: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 
-				if (tokens[tokenIndex].kind === TokenKind.IF) {
+				if (tokens[tokenIndex].kind == TokenKind.IF) {
 					const isOnNewLine = hasNewlineBefore(tokenIndex);
 
 					if (isOnNewLine) {
-						nesting = nesting + 1;
+						nesting++;
 					}
 
-					consumeIf((kind: TokenKind) => {
-						return true;
-					});
+					consumeIf(() => true);
 
 					if (handleBranch()) {
 						handleBody();
 					}
 
 					if (isOnNewLine) {
-						nesting = nesting - 1;
+						nesting--;
 					}
 				} else {
 					handleBody();
@@ -390,9 +423,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 
 			case TokenKind.LEFT_BRACE:
 			case TokenKind.SEMICOLON: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 				break;
 			}
 
@@ -400,42 +431,20 @@ export function format(input: string, indent: string, newline: string, trailingN
 			case TokenKind.VERSION:
 			case TokenKind.INCLUDE:
 			case TokenKind.PRAGMA: {
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 
-				while (
-					consumeIf((kind: TokenKind) => {
-						return !hasNewlineBefore(tokenIndex);
-					})
-				) {}
+				while (consumeIf(() => !hasNewlineBefore(tokenIndex))) {}
 				break;
 			}
 
 			default: {
 				const couldBeType = TokenKind_isIdentifierOrType(tokens[tokenIndex].kind);
-				consumeIf((kind: TokenKind) => {
-					return true;
-				});
+				consumeIf(() => true);
 
 				// Handle function declarations
-				if (
-					couldBeType &&
-					consumeIf((kind: TokenKind) => {
-						return kind === TokenKind.IDENTIFIER;
-					}) &&
-					consumeIf((kind: TokenKind) => {
-						return kind === TokenKind.LEFT_PARENTHESIS;
-					})
-				) {
-					if (
-						!consumeIf((kind: TokenKind) => {
-							return kind === TokenKind.LEFT_BRACE;
-						})
-					) {
-						consumeIf((kind: TokenKind) => {
-							return kind === TokenKind.SEMICOLON;
-						});
+				if (couldBeType && consumeIf((kind: TokenKind) => kind === TokenKind.IDENTIFIER) && consumeIf((kind: TokenKind) => kind === TokenKind.LEFT_PARENTHESIS)) {
+					if (!consumeIf((kind: TokenKind) => kind === TokenKind.LEFT_BRACE)) {
+						consumeIf((kind: TokenKind) => kind === TokenKind.SEMICOLON);
 					}
 				} else {
 					let isMultiLine = false;
@@ -443,24 +452,18 @@ export function format(input: string, indent: string, newline: string, trailingN
 					while (true) {
 						if (!isMultiLine && hasNewlineBefore(tokenIndex)) {
 							isMultiLine = true;
-							nesting = nesting + 1;
+							nesting++;
 						}
 
-						if (
-							!consumeIf((kind: TokenKind) => {
-								return !isStatementEnd(kind, false);
-							})
-						) {
+						if (!consumeIf((kind: TokenKind) => !isStatementEnd(kind, false))) {
 							break;
 						}
 					}
 
-					consumeIf((kind: TokenKind) => {
-						return kind === TokenKind.SEMICOLON;
-					});
+					consumeIf((kind: TokenKind) => kind === TokenKind.SEMICOLON);
 
 					if (isMultiLine) {
-						nesting = nesting - 1;
+						nesting--;
 					}
 				}
 				break;
@@ -491,9 +494,9 @@ export function format(input: string, indent: string, newline: string, trailingN
 			break;
 		}
 
-		nesting = nesting + intended;
+		nesting += intended;
 		handleStatement();
-		nesting = nesting - intended;
+		nesting -= intended;
 	}
 
 	// "if" or "for" or "while"
@@ -505,125 +508,19 @@ export function format(input: string, indent: string, newline: string, trailingN
 			doubleIndent = 0;
 		}
 
-		nesting = nesting + doubleIndent;
+		nesting += doubleIndent;
 
-		if (
-			!consumeIf((kind: TokenKind) => {
-				return kind === TokenKind.LEFT_PARENTHESIS;
-			})
-		) {
-			nesting = nesting - doubleIndent;
+		if (!consumeIf((kind: TokenKind) => kind === TokenKind.LEFT_PARENTHESIS)) {
+			nesting -= doubleIndent;
 			return false;
 		}
 
-		nesting = nesting - doubleIndent;
+		nesting -= doubleIndent;
 		return true;
 	};
-	const indexOfClosingBrace: () => number = () => {
-		const stack: TokenKind[] = [];
-		let i = tokenIndex;
-
-		while (i < tokens.length) {
-			const kind = tokens[i].kind;
-
-			switch (kind) {
-				case TokenKind.LEFT_BRACE:
-				case TokenKind.LEFT_BRACKET:
-				case TokenKind.LEFT_PARENTHESIS: {
-					stack.push(kind);
-					break;
-				}
-
-				case TokenKind.RIGHT_BRACE: {
-					if (stack.length === 0) {
-						return i;
-					}
-
-					if (stack.pop() !== TokenKind.LEFT_BRACE) {
-						return -1;
-					}
-					break;
-				}
-
-				case TokenKind.RIGHT_BRACKET: {
-					if (stack.length === 0 || stack.pop() !== TokenKind.LEFT_BRACKET) {
-						return -1;
-					}
-					break;
-				}
-
-				case TokenKind.RIGHT_PARENTHESIS: {
-					if (stack.length === 0 || stack.pop() !== TokenKind.LEFT_PARENTHESIS) {
-						return -1;
-					}
-					break;
-				}
-			}
-
-			i++;
-		}
-
-		return -1;
-	};
-	let forceMultiLine = -1;
-	function handleBraces() {
-		const rightBrace = indexOfClosingBrace();
-		const isMultiLine = rightBrace !== -1 && input.slice(tokens[tokenIndex - 1].range.end, tokens[rightBrace].range.start).includes('\n');
-
-		if (isMultiLine) {
-			forceMultiLine = tokenIndex;
-		}
-
-		nesting = nesting + 1;
-
-		while (handleStatement()) {}
-
-		nesting = nesting - 1;
-
-		if (isMultiLine) {
-			forceMultiLine = tokenIndex;
-		}
-
-		consumeIf((kind: TokenKind) => {
-			return kind === TokenKind.RIGHT_BRACE;
-		});
-	}
-	function handleParentheses() {
-		nesting = nesting + 1;
-
-		while (
-			consumeIf((kind: TokenKind) => {
-				return kind !== TokenKind.RIGHT_PARENTHESIS;
-			})
-		) {}
-
-		nesting = nesting - 1;
-		consumeIf((kind: TokenKind) => {
-			return kind === TokenKind.RIGHT_PARENTHESIS;
-		});
-	}
-	function handleBrackets() {
-		nesting = nesting + 1;
-
-		while (
-			consumeIf((kind: TokenKind) => {
-				return kind !== TokenKind.RIGHT_BRACKET;
-			})
-		) {}
-
-		nesting = nesting - 1;
-		consumeIf((kind: TokenKind) => {
-			return kind === TokenKind.RIGHT_BRACKET;
-		});
-	}
 
 	// Consume all tokens
-	while (
-		handleStatement() ||
-		consumeIf((kind: TokenKind) => {
-			return kind !== TokenKind.EOF;
-		})
-	) {}
+	while (handleStatement() || consumeIf((kind: TokenKind) => kind !== TokenKind.EOF)) {}
 
 	const newlines = _formatWhitespace(input.slice(prevEnd), newline);
 

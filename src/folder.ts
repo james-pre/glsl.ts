@@ -321,11 +321,9 @@ export function _foldDot(node: Node): Node {
 			console.assert(folded.childCount() === 1 + variables.length);
 
 			// Extract the field from the constructor call
-			for (let i1 = 0, count2 = variables.length; i1 < count2; i1 = i1 + 1) {
-				const variable = variables[i1];
-
-				if (variable.name === name) {
-					return folded.childAt(1 + i1).remove();
+			for (let i = 0; i < variables.length; i++) {
+				if (variables[i].name === name) {
+					return folded.childAt(1 + i).remove();
 				}
 			}
 		}
@@ -354,17 +352,17 @@ export function _foldIndex(node: Node): Node {
 
 		// Indexing into a matrix creates a vector
 		else if (type.isMatrix()) {
-			const indexCount1 = type.indexCount();
-			const index1 = foldedRight.asInt();
-			console.assert(foldedLeft.childCount() === 1 + indexCount1 * indexCount1);
+			const indexCount = type.indexCount();
+			const index = foldedRight.asInt();
+			console.assert(foldedLeft.childCount() === 1 + indexCount * indexCount);
 
 			// The index must be in range
-			if (0 <= index1 && index1 < indexCount1) {
+			if (0 <= index && index < indexCount) {
 				const indexType = type.indexType();
 				const result = Node.createConstructorCall(indexType);
-				const before = foldedLeft.childAt(index1 * indexCount1);
+				const before = foldedLeft.childAt(index * indexCount);
 
-				for (let i = 0, count = indexCount1; i < count; i++) {
+				for (let i = 0; i < indexCount; i++) {
 					result.appendChild(before.nextSibling().remove());
 				}
 
@@ -428,7 +426,7 @@ export function _foldCall(node: Node): Node {
 			matrixStride = folded.resolvedType.indexCount();
 		}
 
-		count = count + 1;
+		count++;
 	}
 
 	// If a matrix argument is given to a matrix constructor, it is an error
@@ -475,7 +473,7 @@ export function _foldMultiply(node: Node): Node {
 			for (let i = 0, count1 = stride; i < count1; i++) {
 				let total = 0;
 
-				for (let col = 0, count = stride; col < count; col = col + 1) {
+				for (let col = 0, count = stride; col < count; col++) {
 					total += leftValues[col] * rightValues[col + i * stride];
 				}
 
@@ -487,44 +485,44 @@ export function _foldMultiply(node: Node): Node {
 
 		// Matrix-vector multiply
 		if ((leftType === Type.MAT2 && rightType === Type.VEC2) || (leftType === Type.MAT3 && rightType === Type.VEC3) || (leftType === Type.MAT4 && rightType === Type.VEC4)) {
-			const stride1 = leftType.indexCount();
-			const result1 = Node.createConstructorCall(rightType);
-			const leftValues1 = _floatValues(left);
-			const rightValues1 = _floatValues(right);
+			const stride = leftType.indexCount();
+			const result = Node.createConstructorCall(rightType);
+			const leftValues = _floatValues(left);
+			const rightValues = _floatValues(right);
 
-			for (let i1 = 0, count3 = stride1; i1 < count3; i1 = i1 + 1) {
-				let total1 = 0;
+			for (let i = 0; i < stride; i++) {
+				let total = 0;
 
-				for (let row = 0, count2 = stride1; row < count2; row = row + 1) {
-					total1 += leftValues1[i1 + row * stride1] * rightValues1[row];
+				for (let row = 0; row < stride; row++) {
+					total += leftValues[i + row * stride] * rightValues[row];
 				}
 
-				result1.appendChild(Node.createFloat(total1));
+				result.appendChild(Node.createFloat(total));
 			}
 
-			return result1;
+			return result;
 		}
 
 		// Matrix-matrix multiply
 		if (leftType.isMatrix() && rightType === leftType) {
-			const stride2 = leftType.indexCount();
-			const result2 = Node.createConstructorCall(leftType);
-			const leftValues2 = _floatValues(left);
-			const rightValues2 = _floatValues(right);
+			const stride = leftType.indexCount();
+			const result = Node.createConstructorCall(leftType);
+			const leftValues = _floatValues(left);
+			const rightValues = _floatValues(right);
 
-			for (let row1 = 0, count6 = stride2; row1 < count6; row1 = row1 + 1) {
-				for (let col1 = 0, count5 = stride2; col1 < count5; col1 = col1 + 1) {
-					let total2 = 0;
+			for (let row = 0; row < stride; row++) {
+				for (let col = 0; col < stride; col++) {
+					let total = 0;
 
-					for (let i2 = 0, count4 = stride2; i2 < count4; i2 = i2 + 1) {
-						total2 += leftValues2[col1 + i2 * stride2] * rightValues2[i2 + row1 * stride2];
+					for (let i = 0; i < stride; i++) {
+						total += leftValues[col + i * stride] * rightValues[i + row * stride];
 					}
 
-					result2.appendChild(Node.createFloat(total2));
+					result.appendChild(Node.createFloat(total));
 				}
 			}
 
-			return result2;
+			return result;
 		}
 
 		return _foldFloat2(left, right, (a: number, b: number) => a * b) ?? _foldInt2(left, right, (a: number, b: number) => a * b);
@@ -554,13 +552,11 @@ export function _castValue(type: Type, node: Node): Node {
 			return;
 	}
 
-	const value1 = type;
-
-	if (value1 === Type.BOOL) {
+	if (type === Type.BOOL) {
 		return Node.createBool(!!value);
-	} else if (value1 === Type.INT) {
+	} else if (type === Type.INT) {
 		return Node.createInt(value | 0);
-	} else if (value1 === Type.FLOAT) {
+	} else if (type === Type.FLOAT) {
 		return Node.createFloat(value);
 	}
 }
@@ -599,8 +595,8 @@ export function _foldComponentConstructor(_arguments: Node[], type: Type, matrix
 		console.assert(type.isMatrix());
 		console.assert(stride1 * stride1 === componentCount);
 
-		for (let row = 0, count2 = stride1; row < count2; row = row + 1) {
-			for (let col = 0, count1 = stride1; col < count1; col = col + 1) {
+		for (let row = 0, count2 = stride1; row < count2; row++) {
+			for (let col = 0, count1 = stride1; col < count1; col++) {
 				node.appendChild(col < matrixStride && row < matrixStride ? _arguments[col + row * matrixStride] : Node.createFloat(col === row ? 1 : 0));
 			}
 		}
@@ -614,7 +610,7 @@ export function _foldComponentConstructor(_arguments: Node[], type: Type, matrix
 		}
 
 		// The constructed value is represented as a constructor call
-		for (let i1 = 0, count3 = componentCount; i1 < count3; i1 = i1 + 1) {
+		for (let i1 = 0, count3 = componentCount; i1 < count3; i1++) {
 			const argument1 = _arguments[i1];
 
 			// All casts should be resolved by this point

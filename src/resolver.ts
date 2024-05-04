@@ -1,12 +1,12 @@
 import { API_NAME } from './api.js';
-import { CompilerData, ExtensionBehavior } from './compiler.js';
+import { CompilerData } from './compiler.js';
 import { ControlFlowAnalyzer } from './controlflow.js';
 import { fold } from './folder.js';
 import { Log } from './log.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isBinaryAssign, NodeKind_isExpression, NodeKind_isStatement, NodeKind_isUnary, NodeKind_isUnaryAssign } from './node.js';
 import { Range } from './range.js';
 import * as swizzle from './swizzle.js';
-import { FunctionSymbol, VariableKind, BaseSymbol } from './symbol.js';
+import { BaseSymbol, FunctionSymbol, VariableKind } from './symbol.js';
 import { Type } from './type.js';
 
 export class Resolver {
@@ -705,7 +705,7 @@ export class Resolver {
 					hasMatrixArgument = true;
 				}
 
-				providedCount = providedCount + deltaCount;
+				providedCount += deltaCount;
 			}
 
 			// If a matrix argument is given to a matrix constructor, it is an error

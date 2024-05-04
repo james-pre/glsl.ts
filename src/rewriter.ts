@@ -1,6 +1,6 @@
-import { CompilerData, CompilerOptions, ExtensionBehavior } from './compiler.js';
+import { CompilerData, CompilerOptions } from './compiler.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isJump, NodeKind_isLiteral } from './node.js';
-import { VariableKind, VariableSymbol, BaseSymbol } from './symbol.js';
+import { BaseSymbol, VariableKind, VariableSymbol } from './symbol.js';
 import { Type } from './type.js';
 
 export class Rewriter {

@@ -182,7 +182,7 @@ export class Node {
 		let count = 0;
 
 		for (let child = this._firstChild; child; child = child._nextSibling) {
-			count = count + 1;
+			count++;
 		}
 
 		return count;
@@ -194,7 +194,7 @@ export class Node {
 
 		while (index !== 0) {
 			child = child._nextSibling;
-			index = index - 1;
+			index--;
 		}
 
 		return child;

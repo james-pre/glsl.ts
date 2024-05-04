@@ -746,21 +746,21 @@ export function parseLeadingComments(context: ParserContext): string[] {
 	let leadingComments: string[];
 
 	// Scan the comments backwards
-	for (let i = comments.length - 1; i >= 0; i = i - 1) {
+	for (let i = comments.length - 1; i >= 0; i--) {
 		const comment = comments[i];
 
 		// Count the newlines in between this token and the next token
 		const whitespace = comment.source.contents.slice(comment.end, nextRangeStart);
 		let newlineCount = 0;
 
-		for (let j = 0; j < whitespace.length; j = j + 1) {
+		for (let j = 0; j < whitespace.length; j++) {
 			const c = whitespace.charCodeAt(j);
 
 			if (c === 13 || c === 10) {
-				newlineCount = newlineCount + 1;
+				newlineCount++;
 
 				if (c === 13 && j + 1 < whitespace.length && whitespace.charCodeAt(j + 1) === 10) {
-					j = j + 1;
+					j++;
 				}
 			}
 		}

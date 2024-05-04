@@ -27,7 +27,7 @@ export class Renamer {
 		number = (number / Renamer._first.length) | 0;
 
 		while (number > 0) {
-			number = number - 1;
+			number--;
 			name += Renamer._rest[number % Renamer._rest.length];
 			number = (number / Renamer._rest.length) | 0;
 		}
@@ -216,7 +216,7 @@ export class Renamer {
 		let total = 0;
 
 		for (const info of group) {
-			total = total + info.useCount;
+			total += info.useCount;
 		}
 
 		return total;
