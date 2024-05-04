@@ -1,4 +1,4 @@
-import { CompilerOptions, ExtensionBehavior } from './compiler.js';
+import { CompilerOptions } from './compiler.js';
 import { Node, NodeKind, NodeKind_isBinaryAssign, NodeKind_isExpression, NodeKind_isStatement, NodeKind_isUnaryPrefix } from './node.js';
 import { Precedence } from './pratt.js';
 import { SymbolFlags, SymbolFlags_toString, VariableSymbol } from './symbol.js';
@@ -29,7 +29,7 @@ export class Emitter {
 				this._code += this._newline;
 			}
 
-			this._emit1(child);
+			this._emitNode(child);
 			this._code += this._newline;
 			previous = child;
 		}
@@ -64,7 +64,7 @@ export class Emitter {
 		}
 	}
 
-	protected _emit1(node: Node): void {
+	protected _emitNode(node: Node): void {
 		console.assert(NodeKind_isStatement(node.kind));
 
 		switch (node.kind) {
@@ -77,7 +77,7 @@ export class Emitter {
 
 					for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
 						this._code += this._indent;
-						this._emit1(child);
+						this._emitNode(child);
 						this._code += this._newline;
 					}
 
@@ -106,13 +106,13 @@ export class Emitter {
 				this._code += 'do';
 				this._emitBody(node.doWhileBody(), Emitter.After.AFTER_KEYWORD);
 				this._code += this._newline + this._indent + 'while' + this._space + '(';
-				this._emit3(node.doWhileTest(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.doWhileTest(), Precedence.LOWEST);
 				this._code += ');';
 				break;
 			}
 
 			case NodeKind.EXPRESSION: {
-				this._emit3(node.expressionValue(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.expressionValue(), Precedence.LOWEST);
 				this._code += ';';
 				break;
 			}
@@ -129,9 +129,9 @@ export class Emitter {
 
 				if (node.forSetup() !== null) {
 					if (node.forSetup().kind === NodeKind.VARIABLES) {
-						this._emit1(node.forSetup());
+						this._emitNode(node.forSetup());
 					} else {
-						this._emit3(node.forSetup(), Precedence.LOWEST);
+						this._emitNodePrecedence(node.forSetup(), Precedence.LOWEST);
 						this._code += ';';
 					}
 				} else {
@@ -140,14 +140,14 @@ export class Emitter {
 
 				if (node.forTest() !== null) {
 					this._code += this._space;
-					this._emit3(node.forTest(), Precedence.LOWEST);
+					this._emitNodePrecedence(node.forTest(), Precedence.LOWEST);
 				}
 
 				this._code += ';';
 
 				if (node.forUpdate() !== null) {
 					this._code += this._space;
-					this._emit3(node.forUpdate(), Precedence.LOWEST);
+					this._emitNodePrecedence(node.forUpdate(), Precedence.LOWEST);
 				}
 
 				this._code += ')';
@@ -158,7 +158,7 @@ export class Emitter {
 			case NodeKind.FUNCTION: {
 				const _function = node.symbol.asFunction();
 				this._code += SymbolFlags_toString(_function.flags);
-				this._emit3(_function.returnType, Precedence.LOWEST);
+				this._emitNodePrecedence(_function.returnType, Precedence.LOWEST);
 				this._code += ' ';
 				this._code += _function.name;
 				this._code += '(';
@@ -169,16 +169,16 @@ export class Emitter {
 					}
 
 					this._code += SymbolFlags_toString(argument.flags);
-					this._emit3(argument.type, Precedence.LOWEST);
+					this._emitNodePrecedence(argument.type, Precedence.LOWEST);
 					this._code += ' ';
-					this._emit2(argument);
+					this._emitVar(argument);
 				}
 
 				this._code += ')';
 
 				if (_function.block !== null) {
 					this._code += this._space;
-					this._emit1(_function.block);
+					this._emitNode(_function.block);
 				} else {
 					this._code += ';';
 				}
@@ -187,7 +187,7 @@ export class Emitter {
 
 			case NodeKind.IF: {
 				this._code += 'if' + this._space + '(';
-				this._emit3(node.ifTest(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.ifTest(), Precedence.LOWEST);
 				this._code += ')';
 				this._emitBody(node.ifTrue(), Emitter.After.AFTER_PARENTHESIS);
 
@@ -196,7 +196,7 @@ export class Emitter {
 
 					if (node.ifFalse().kind === NodeKind.IF) {
 						this._code += ' ';
-						this._emit1(node.ifFalse());
+						this._emitNode(node.ifFalse());
 					} else {
 						this._emitBody(node.ifFalse(), Emitter.After.AFTER_KEYWORD);
 					}
@@ -207,7 +207,7 @@ export class Emitter {
 			case NodeKind.PRECISION: {
 				this._code += 'precision ';
 				this._code += SymbolFlags_toString(node.precisionFlag());
-				this._emit3(node.precisionType(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.precisionType(), Precedence.LOWEST);
 				this._code += ';';
 				break;
 			}
@@ -221,7 +221,7 @@ export class Emitter {
 						this._code += ' ';
 					}
 
-					this._emit3(value, Precedence.LOWEST);
+					this._emitNodePrecedence(value, Precedence.LOWEST);
 				}
 
 				this._code += ';';
@@ -237,7 +237,7 @@ export class Emitter {
 				for (let child1 = node.structBlock().firstChild(); child1 !== null; child1 = child1.nextSibling()) {
 					console.assert(child1.kind === NodeKind.VARIABLES);
 					this._code += this._indent;
-					this._emit1(child1);
+					this._emitNode(child1);
 					this._code += this._newline;
 				}
 
@@ -248,7 +248,7 @@ export class Emitter {
 					for (let child2 = node.structVariables().variablesType().nextSibling(); child2 !== null; child2 = child2.nextSibling()) {
 						console.assert(child2.kind === NodeKind.VARIABLE);
 						this._code += child2.previousSibling().previousSibling() === null ? this._space : ',' + this._space;
-						this._emit2(child2.symbol.asVariable());
+						this._emitVar(child2.symbol.asVariable());
 					}
 				}
 
@@ -258,12 +258,12 @@ export class Emitter {
 
 			case NodeKind.VARIABLES: {
 				this._code += SymbolFlags_toString(node.variablesFlags());
-				this._emit3(node.variablesType(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.variablesType(), Precedence.LOWEST);
 
 				for (let child3 = node.variablesType().nextSibling(); child3 !== null; child3 = child3.nextSibling()) {
 					const variable = child3.symbol.asVariable();
 					this._code += child3.previousSibling().previousSibling() === null ? ' ' : ',' + this._space;
-					this._emit2(variable);
+					this._emitVar(variable);
 				}
 
 				this._code += ';';
@@ -279,7 +279,7 @@ export class Emitter {
 
 			case NodeKind.WHILE: {
 				this._code += 'while' + this._space + '(';
-				this._emit3(node.whileTest(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.whileTest(), Precedence.LOWEST);
 				this._code += ')';
 				this._emitBody(node.whileBody(), Emitter.After.AFTER_PARENTHESIS);
 				break;
@@ -307,12 +307,12 @@ export class Emitter {
 	protected _emitBody(node: Node, after: Emitter.After): void {
 		if (node.kind === NodeKind.BLOCK) {
 			this._code += this._space;
-			this._emit1(node);
+			this._emitNode(node);
 		} else {
 			this._code += this._removeWhitespace && after === Emitter.After.AFTER_KEYWORD ? ' ' : this._newline;
 			this._increaseIndent();
 			this._code += this._indent;
-			this._emit1(node);
+			this._emitNode(node);
 			this._decreaseIndent();
 		}
 	}
@@ -323,31 +323,31 @@ export class Emitter {
 				this._code += ',' + this._space;
 			}
 
-			this._emit3(child, Precedence.COMMA);
+			this._emitNodePrecedence(child, Precedence.COMMA);
 		}
 	}
 
-	protected _emit2(variable: VariableSymbol): void {
+	protected _emitVar(variable: VariableSymbol): void {
 		this._code += variable.name;
 
 		if (variable.arrayCount !== null) {
 			this._code += '[';
-			this._emit3(variable.arrayCount, Precedence.LOWEST);
+			this._emitNodePrecedence(variable.arrayCount, Precedence.LOWEST);
 			this._code += ']';
 		}
 
 		if (variable.value() !== null) {
 			this._code += this._space + '=' + this._space;
-			this._emit3(variable.value(), Precedence.COMMA);
+			this._emitNodePrecedence(variable.value(), Precedence.COMMA);
 		}
 	}
 
-	protected _emit3(node: Node, precedence: Precedence): void {
+	protected _emitNodePrecedence(node: Node, precedence: Precedence): void {
 		console.assert(NodeKind_isExpression(node.kind));
 
 		switch (node.kind) {
 			case NodeKind.CALL: {
-				this._emit3(node.callTarget(), Precedence.UNARY_POSTFIX);
+				this._emitNodePrecedence(node.callTarget(), Precedence.UNARY_POSTFIX);
 				this._code += '(';
 				this._emitCommaSeparatedExpressions(node.callTarget().nextSibling());
 				this._code += ')';
@@ -355,7 +355,7 @@ export class Emitter {
 			}
 
 			case NodeKind.DOT: {
-				this._emit3(node.dotTarget(), Precedence.MEMBER);
+				this._emitNodePrecedence(node.dotTarget(), Precedence.MEMBER);
 				this._code += '.';
 				this._code += node.symbol !== null ? node.symbol.name : node.asString();
 				break;
@@ -366,11 +366,11 @@ export class Emitter {
 					this._code += '(';
 				}
 
-				this._emit3(node.hookTest(), Precedence.LOGICAL_OR);
+				this._emitNodePrecedence(node.hookTest(), Precedence.LOGICAL_OR);
 				this._code += this._space + '?' + this._space;
-				this._emit3(node.hookTrue(), Precedence.ASSIGN);
+				this._emitNodePrecedence(node.hookTrue(), Precedence.ASSIGN);
 				this._code += this._space + ':' + this._space;
-				this._emit3(node.hookFalse(), Precedence.ASSIGN);
+				this._emitNodePrecedence(node.hookFalse(), Precedence.ASSIGN);
 
 				if (Precedence.ASSIGN < precedence) {
 					this._code += ')';
@@ -417,9 +417,9 @@ export class Emitter {
 			}
 
 			case NodeKind.INDEX: {
-				this._emit3(node.binaryLeft(), Precedence.MEMBER);
+				this._emitNodePrecedence(node.binaryLeft(), Precedence.MEMBER);
 				this._code += '[';
-				this._emit3(node.binaryRight(), Precedence.LOWEST);
+				this._emitNodePrecedence(node.binaryRight(), Precedence.LOWEST);
 				this._code += ']';
 				break;
 			}
@@ -568,11 +568,11 @@ export class Emitter {
 			this._code += ' ';
 		}
 
-		this._emit3(value, Precedence.UNARY_PREFIX);
+		this._emitNodePrecedence(value, Precedence.UNARY_PREFIX);
 	}
 
 	protected _emitUnaryPostfix(operator: string, node: Node, precedence: Precedence): void {
-		this._emit3(node.unaryValue(), Precedence.UNARY_POSTFIX);
+		this._emitNodePrecedence(node.unaryValue(), Precedence.UNARY_POSTFIX);
 		this._code += operator;
 	}
 
@@ -583,9 +583,9 @@ export class Emitter {
 			this._code += '(';
 		}
 
-		this._emit3(node.binaryLeft(), inner + (isRightAssociative ? 1 : 0));
+		this._emitNodePrecedence(node.binaryLeft(), inner + (isRightAssociative ? 1 : 0));
 		this._code += this._space + operator + this._space;
-		this._emit3(node.binaryRight(), inner + (!isRightAssociative ? 1 : 0));
+		this._emitNodePrecedence(node.binaryRight(), inner + (!isRightAssociative ? 1 : 0));
 
 		if (inner < outer) {
 			this._code += ')';

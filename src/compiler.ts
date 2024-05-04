@@ -40,7 +40,7 @@ export type ExtensionBehavior = 'default' | 'disable' | 'enable' | 'require' | '
 export const extensionBehaviors = ['default', 'disable', 'enable', 'require', 'warn'] as const;
 
 export function isExtensionBehavior(arg: string): arg is ExtensionBehavior {
-	return extensionBehaviors.includes(arg);
+	return ['default', 'disable', 'enable', 'require', 'warn'].includes(arg);
 }
 
 export class CompilerData {
