@@ -126,9 +126,9 @@ export enum TokenKind {
 export class Token {
 	range: Range;
 	kind: TokenKind;
-	comments: Array<Range>;
+	comments: Range[];
 
-	constructor(range: Range, kind: TokenKind, comments: Array<Range>) {
+	constructor(range: Range, kind: TokenKind, comments: Range[]) {
 		this.range = range;
 		this.kind = kind;
 		this.comments = comments;
@@ -140,10 +140,10 @@ export const enum TokenPurpose {
 	FORMAT,
 }
 
-export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Array<Token> {
-	const parts: Array<string> = source.contents.split(_tokenRegex);
-	const tokens: Array<Token> = [];
-	let comments: Array<Range> = null;
+export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token[] {
+	const parts: string[] = source.contents.split(_tokenRegex);
+	const tokens: Token[] = [];
+	let comments: Range[] = null;
 	let prevCommentTokenCount = 0;
 	let start = 0;
 

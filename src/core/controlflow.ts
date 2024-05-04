@@ -1,8 +1,8 @@
 import { Node, NodeKind, NodeKind_isLoop } from './node.js';
 
 export class ControlFlowAnalyzer {
-	_isLoopBreakTarget: Array<boolean>;
-	_isControlFlowLive: Array<boolean>;
+	_isLoopBreakTarget: boolean[];
+	_isControlFlowLive: boolean[];
 
 	pushBlock(node: Node): void {
 		const parent = node.parent();

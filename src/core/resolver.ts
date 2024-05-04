@@ -5,7 +5,7 @@ import { fold } from './folder.js';
 import { Log } from './log.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isBinaryAssign, NodeKind_isExpression, NodeKind_isStatement, NodeKind_isUnary, NodeKind_isUnaryAssign } from './node.js';
 import { Range } from './range.js';
-import { strings, type } from './swizzle.js';
+import * as swizzle from './swizzle.js';
 import { FunctionSymbol, VariableKind, _Symbol } from './symbol.js';
 import { Type } from './type.js';
 
@@ -13,7 +13,7 @@ export class Resolver {
 	_log: Log;
 	_data: CompilerData;
 	_controlFlow: ControlFlowAnalyzer;
-	_versions: Array<Node>;
+	_versions: Node[];
 	_generatedExtensions: Map<string, Node>;
 	_returnType: Type;
 
@@ -509,7 +509,7 @@ export class Resolver {
 		this.resolveNode(callTarget);
 		const type = callTarget.resolvedType;
 		const symbol = type.symbol;
-		const _arguments: Array<Node> = [];
+		const _arguments: Node[] = [];
 		let hasError = false;
 
 		for (let child = callTarget.nextSibling(); child !== null; child = child.nextSibling()) {
@@ -589,8 +589,8 @@ export class Resolver {
 		}
 	}
 
-	_resolveFunctionOverloads(overloaded: FunctionSymbol, node: Node, _arguments: Array<Node>): void {
-		let overloads: Array<FunctionSymbol> = [];
+	_resolveFunctionOverloads(overloaded: FunctionSymbol, node: Node, _arguments: Node[]): void {
+		let overloads: FunctionSymbol[] = [];
 
 		// Collect all relevant overloads but ignore forward-declared functions that also have an implementation
 		for (let overload = overloaded; overload !== null; overload = overload.previousOverload) {
@@ -658,7 +658,7 @@ export class Resolver {
 		node.resolvedType = overload1.returnType.resolvedType;
 	}
 
-	_resolveConstructor(type: Type, node: Node, _arguments: Array<Node>): void {
+	_resolveConstructor(type: Type, node: Node, _arguments: Node[]): void {
 		node.resolvedType = type;
 
 		if (type === Type.ERROR) {
@@ -751,7 +751,7 @@ export class Resolver {
 
 		const componentCount = type.componentCount();
 
-		for (const set of strings(componentCount)) {
+		for (const set of swizzle.strings(componentCount)) {
 			if (set.indexOf(name[0]) !== -1) {
 				for (let i = 1, count1 = count; i < count1; i++) {
 					if (set.indexOf(name[i]) == -1) {
@@ -765,7 +765,7 @@ export class Resolver {
 					}
 				}
 
-				return type(type.componentType(), count);
+				return swizzle.type(type.componentType(), count);
 			}
 		}
 

@@ -74,7 +74,7 @@ export class Emitter {
 		this._newline = '\n';
 		this._space = ' ';
 		this._removeWhitespace = false;
-		this._removeWhitespace = options.removeWhitespace;
+		this._removeWhitespace = !options.keepWhitespace;
 
 		if (this._removeWhitespace) {
 			this._space = '';

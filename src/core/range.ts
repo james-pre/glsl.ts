@@ -43,7 +43,7 @@ export class Range {
 
 		// Use a unicode iterator to count the actual code points so they don't get sliced through the middle
 		const iterator = StringIterator.INSTANCE.reset(line, 0);
-		const codePoints: Array<number> = [];
+		const codePoints: number[] = [];
 		let a = 0;
 		let b = 0;
 

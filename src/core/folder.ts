@@ -1,5 +1,5 @@
 import { Node, NodeKind } from './node.js';
-import { strings, type } from './swizzle.js';
+import * as swizzle from './swizzle.js';
 import { VariableKind } from './symbol.js';
 import { Type } from './type.js';
 
@@ -293,20 +293,19 @@ export function _foldDot(node: Node): Node {
 
 		// Evaluate a swizzle
 		if (resolvedType.isVector()) {
-			const count = name.length;
 			const componentCount = resolvedType.componentCount();
 
 			// Find the swizzle set
-			for (const set of strings(componentCount)) {
+			for (const set of swizzle.strings(componentCount)) {
 				if (set.indexOf(name[0]) !== -1) {
-					if (count === 1) {
+					if (name.length === 1) {
 						return folded.childAt(1 + set.indexOf(name)).remove();
 					}
 
-					const swizzleType = type(resolvedType.componentType(), count);
+					const swizzleType = swizzle.type(resolvedType.componentType(), name.length);
 					const result = Node.createConstructorCall(swizzleType);
 
-					for (let i = 0, count1 = count; i < count1; i++) {
+					for (let i = 0; i < name.length; i++) {
 						result.appendChild(folded.childAt(1 + set.indexOf(name[i]))).clone();
 					}
 
@@ -388,7 +387,7 @@ export function _foldCall(node: Node): Node {
 	const type = target.resolvedType;
 	const componentType = type.componentType();
 	let matrixStride = 0;
-	const _arguments: Array<Node> = [];
+	const _arguments: Node[] = [];
 	let count = 0;
 
 	// Make sure all arguments are constants
@@ -451,8 +450,8 @@ export function _foldCall(node: Node): Node {
 	return null;
 }
 
-export function _floatValues(node: Node): Array<number> {
-	const values: Array<number> = [];
+export function _floatValues(node: Node): number[] {
+	const values: number[] = [];
 
 	for (let child = node.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
 		values.push(child.asFloat());
@@ -580,7 +579,7 @@ export function _castValue(type: Type, node: Node): Node {
 	return null;
 }
 
-export function _foldComponentConstructor(_arguments: Array<Node>, type: Type, matrixStride: number): Node {
+export function _foldComponentConstructor(_arguments: Node[], type: Type, matrixStride: number): Node {
 	const componentCount = type.componentCount();
 	const componentType = type.componentType();
 	const node = Node.createConstructorCall(type);
@@ -649,7 +648,7 @@ export function _foldComponentConstructor(_arguments: Array<Node>, type: Type, m
 	return node;
 }
 
-export function _foldStruct(_arguments: Array<Node>, type: Type): Node {
+export function _foldStruct(_arguments: Node[], type: Type): Node {
 	const variables = type.symbol.asStruct().variables;
 	const node = Node.createConstructorCall(type);
 

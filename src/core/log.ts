@@ -34,8 +34,8 @@ export class Diagnostic {
 }
 
 export class Log {
-	diagnostics: Array<Diagnostic>;
-	unusedSymbols: Array<_Symbol>;
+	diagnostics: Diagnostic[];
+	unusedSymbols: _Symbol[];
 	warningCount: number;
 	errorCount: number;
 	_prevErrorRange: Range;

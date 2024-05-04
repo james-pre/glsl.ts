@@ -28,7 +28,7 @@ export class _Symbol {
 	name: string;
 	scope: Scope;
 	flags: SymbolFlags;
-	comments: Array<string>;
+	comments: string[];
 	constantValue: Node;
 	requiredExtension: string;
 	_resolvedType: Type;
@@ -117,7 +117,7 @@ export class _Symbol {
 }
 
 export class StructSymbol extends _Symbol {
-	variables: Array<VariableSymbol>;
+	variables: VariableSymbol[];
 
 	constructor(id: number, range: Range, name: string, scope: Scope) {
 		super(id, range, name, scope);
@@ -126,7 +126,7 @@ export class StructSymbol extends _Symbol {
 }
 
 export class FunctionSymbol extends _Symbol {
-	_arguments: Array<VariableSymbol>;
+	_arguments: VariableSymbol[];
 	returnType: Node;
 	block: Node;
 	previousOverload: FunctionSymbol;

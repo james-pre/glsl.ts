@@ -15,10 +15,10 @@ export class LineColumn {
 export class Source {
 	name: string;
 	contents: string;
-	tokens: Array<Token>;
+	tokens: Token[];
 
 	// This maps line numbers to indices within contents
-	_lineOffsets: Array<number>;
+	_lineOffsets: number[];
 
 	entireRange(): Range {
 		return new Range(this, 0, this.contents.length);

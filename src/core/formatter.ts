@@ -194,7 +194,7 @@ export function _trimSingleLineComment(text: string): string {
 
 export function _trimMultiLineComment(comment: string, beforeComment: string, indent: string, newline: string): string {
 	// Split the comment contents into lines
-	const lines: Array<string> = [];
+	const lines: string[] = [];
 	let start = 0;
 
 	for (let i = 0, n = comment.length; i < n; i++) {
@@ -539,7 +539,7 @@ export function format(input: string, indent: string, newline: string, trailingN
 		return true;
 	};
 	const indexOfClosingBrace: () => number = () => {
-		const stack: Array<TokenKind> = [];
+		const stack: TokenKind[] = [];
 		let i = tokenIndex;
 
 		while (i < tokens.length) {

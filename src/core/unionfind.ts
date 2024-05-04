@@ -1,5 +1,5 @@
 export class UnionFind {
-	parents: Array<number>;
+	parents: number[];
 
 	allocate1(): number {
 		const index = this.parents.length;

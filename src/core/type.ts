@@ -26,7 +26,7 @@ export class Type {
 	static VEC3 = new StructSymbol(-17, null, 'vec3', null).resolvedType();
 	static VEC4 = new StructSymbol(-18, null, 'vec4', null).resolvedType();
 	static VOID = new StructSymbol(-19, null, 'void', null).resolvedType();
-	static BUILT_INS: Array<Type> = [
+	static BUILT_INS: Type[] = [
 		Type.BOOL,
 		Type.BVEC2,
 		Type.BVEC3,

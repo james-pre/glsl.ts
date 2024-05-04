@@ -2,7 +2,7 @@ import { Emitter } from './emitter.js';
 import { Node, NodeKind } from './node.js';
 import { Range } from './range.js';
 import { Source } from './source.js';
-import { strings, type } from './swizzle.js';
+import * as swizzle from './swizzle.js';
 import { FunctionSymbol, StructSymbol, SymbolFlags_toString, VariableSymbol, _Symbol } from './symbol.js';
 import { Type } from './type.js';
 import { compare, compare_string } from './utils.js';
@@ -161,7 +161,7 @@ export class SymbolQuery {
 
 export class SymbolsQuery {
 	source: Source;
-	symbols: Array<_Symbol>;
+	symbols: _Symbol[];
 
 	run(global: Node): void {
 		this._visit(global);
@@ -207,7 +207,7 @@ export class SymbolsQuery {
 export class RenameQuery {
 	source: Source;
 	index: number;
-	ranges: Array<Range>;
+	ranges: Range[];
 	symbol: _Symbol;
 
 	run(global: Node): void {
@@ -330,7 +330,7 @@ export class CompletionQuery {
 	source: Source;
 	index: number;
 	_map: Map<string, Completion>;
-	completions: Array<Completion>;
+	completions: Completion[];
 
 	run(global: Node): void {
 		this._addTextualCompletion('keyword', 'false');
@@ -425,23 +425,22 @@ export class CompletionQuery {
 
 				if (touches && !this._touches(dotTarget.range)) {
 					this.completions = [];
-					const type = dotTarget.resolvedType;
-					const value = type;
+					const { resolvedType: type } = dotTarget;
 
 					if (
-						value === Type.BVEC2 ||
-						value === Type.IVEC2 ||
-						value === Type.VEC2 ||
-						value === Type.BVEC3 ||
-						value === Type.IVEC3 ||
-						value === Type.VEC3 ||
-						value === Type.BVEC4 ||
-						value === Type.IVEC4 ||
-						value === Type.VEC4
+						type === Type.BVEC2 ||
+						type === Type.IVEC2 ||
+						type === Type.VEC2 ||
+						type === Type.BVEC3 ||
+						type === Type.IVEC3 ||
+						type === Type.VEC3 ||
+						type === Type.BVEC4 ||
+						type === Type.IVEC4 ||
+						type === Type.VEC4
 					) {
-						for (const set of strings(type.componentCount())) {
+						for (const set of swizzle.strings(type.componentCount())) {
 							for (let count = 1; count <= 4; count++) {
-								const counters: Array<number> = [];
+								const counters: number[] = [];
 
 								for (let i = 0; i < count; i++) {
 									counters.push(0);
@@ -455,7 +454,7 @@ export class CompletionQuery {
 										name += set[counters[i]];
 									}
 
-									const symbol = type(type.componentType(), name.length).symbol;
+									const symbol = swizzle.type(type.componentType(), name.length).symbol;
 									this._addTextualCompletion('variable', name).detail = `${symbol.name} ${name};`;
 
 									// Increment and carry
@@ -516,10 +515,10 @@ export class CompletionQuery {
 
 export class Signature {
 	text: string;
-	_arguments: Array<string>;
+	_arguments: string[];
 	documentation: string;
 
-	constructor(text: string, _arguments: Array<string>, documentation: string) {
+	constructor(text: string, _arguments: string[], documentation: string) {
 		this.text = text;
 		this._arguments = _arguments;
 		this.documentation = documentation;
@@ -529,7 +528,7 @@ export class Signature {
 export class SignatureQuery {
 	source: Source;
 	index: number;
-	signatures: Array<Signature>;
+	signatures: Signature[];
 	activeArgument: number;
 	activeSignature: number;
 
@@ -569,14 +568,14 @@ export class SignatureQuery {
 					const firstArgument = callTarget.nextSibling();
 					const type = callTarget.resolvedType;
 					const symbol = type.symbol;
-					const _arguments: Array<Node> = [];
+					const _arguments: Node[] = [];
 
 					for (let arg = firstArgument; arg !== null; arg = arg.nextSibling()) {
 						_arguments.push(arg);
 					}
 
 					if (symbol.isFunction()) {
-						const overloads: Array<FunctionSymbol> = [];
+						const overloads: FunctionSymbol[] = [];
 
 						// Collect all relevant overloads but ignore forward-declared functions that also have an implementation
 						for (let overload = symbol.asFunction(); overload !== null; overload = overload.previousOverload) {
@@ -605,7 +604,7 @@ export class SignatureQuery {
 							this.activeSignature = 0;
 
 							// Start off with all overloads
-							let filteredOverloads: Array<number> = [];
+							let filteredOverloads: number[] = [];
 
 							for (let i = 0; i < overloads.length; i++) {
 								filteredOverloads.push(i);
@@ -613,7 +612,7 @@ export class SignatureQuery {
 
 							// Try filtering by argument count
 							for (let limit = _arguments.length; limit > 0; limit = limit - 1) {
-								const nextFilteredOverloads: Array<number> = [];
+								const nextFilteredOverloads: number[] = [];
 
 								for (const index of filteredOverloads) {
 									if (overloads[index]._arguments.length >= limit) {
@@ -814,7 +813,7 @@ export function _variableTooltipText(variable: VariableSymbol): string {
 	return text;
 }
 
-export function _leadingCommentsToMarkdown(comments: Array<string>): string {
+export function _leadingCommentsToMarkdown(comments: string[]): string {
 	let markdown = '';
 
 	if (comments !== null) {

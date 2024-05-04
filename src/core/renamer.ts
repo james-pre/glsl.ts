@@ -18,8 +18,8 @@ export class Renamer {
 	_nextSymbolName: number;
 	_enclosingFunctionLabel: number;
 
-	static rename(globals: Array<Node>, options: CompilerOptions): Map<string, string> {
-		return new Renamer(options.renameSymbols)._rename(globals);
+	static rename(globals: Node[], options: CompilerOptions): Map<string, string> {
+		return new Renamer(options.renamingSymbols)._rename(globals);
 	}
 
 	static _numberToName(number: number): string {
@@ -35,7 +35,7 @@ export class Renamer {
 		return name;
 	}
 
-	_rename(globals: Array<Node>): Map<string, string> {
+	_rename(globals: Node[]): Map<string, string> {
 		// Gather information
 		for (let i = 0, count = globals.length; i < count; i++) {
 			this._globalIndex = i;
@@ -59,10 +59,7 @@ export class Renamer {
 				for (const symbol of Array.from(info.symbols.values())) {
 					const old = symbol.name;
 
-					if (
-						!symbol.isImportedOrExported() &&
-						(this._renameSymbols === RenameSymbols.ALL || (this._renameSymbols === RenameSymbols.INTERNAL && !symbol.isAttributeOrUniform()))
-					) {
+					if (!symbol.isImportedOrExported() && (this._renameSymbols === 'all' || (this._renameSymbols === 'internal-only' && !symbol.isAttributeOrUniform()))) {
 						if (name === null) {
 							name = this._generateSymbolName();
 						}
@@ -196,7 +193,7 @@ export class Renamer {
 	}
 
 	_zipTogetherInOrder(groups: Array<Array<Renamer.SymbolInfo>>): void {
-		const labels: Array<number> = [];
+		const labels: number[] = [];
 
 		for (const group of groups) {
 			group.sort((a: Renamer.SymbolInfo, b: Renamer.SymbolInfo) => {

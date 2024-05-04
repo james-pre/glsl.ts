@@ -1,6 +1,6 @@
 import { Type } from './type.js';
 
-export function strings(componentCount: number): Array<string> {
+export function strings(componentCount: number): string[] {
 	switch (componentCount) {
 		case 2: {
 			return _STRINGS_2;
@@ -82,6 +82,6 @@ export function type(comonentType: Type, componentCount: number): Type {
 	return null;
 }
 
-export const _STRINGS_2: Array<string> = ['xy', 'st', 'rg'];
-export const _STRINGS_3: Array<string> = ['xyz', 'stp', 'rgb'];
-export const _STRINGS_4: Array<string> = ['xyzw', 'stpq', 'rgba'];
+export const _STRINGS_2: string[] = ['xy', 'st', 'rg'];
+export const _STRINGS_3: string[] = ['xyz', 'stp', 'rgb'];
+export const _STRINGS_4: string[] = ['xyzw', 'stpq', 'rgba'];

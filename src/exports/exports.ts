@@ -1,6 +1,9 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { assignWithDefaults, pick } from 'utilium';
 import { API_NAME } from '../core/api.js';
-import { CompilerOptions, OutputFormat, RenameSymbols, compile as _compile, typeCheck } from '../core/compiler.js';
-import { TrailingNewline, format as _format } from '../core/formatter.js';
+import { compile as _compile, CompilerOptions, FileAccess, isOutputFormat, isRenameSymbols, OutputFormat, RenameSymbols, typeCheck } from '../core/compiler.js';
+import { format as _format, TrailingNewline } from '../core/formatter.js';
 import { Completion, CompletionQuery, RenameQuery, Signature, SignatureQuery, SymbolQuery, SymbolsQuery, Tooltip } from '../core/ide.js';
 import { Diagnostic, DiagnosticKind, Log } from '../core/log.js';
 import { Range } from '../core/range.js';
@@ -92,16 +95,16 @@ export function printLogWithColor(log: Log): void {
 	}
 }
 
-export function sourcesFromInput(input: any): Array<Source> {
+export function sourcesFromInput(input: any): Source[] {
 	if (typeof input === 'string') {
 		return [new Source('<stdin>', input)];
 	}
 
-	if (input instanceof Array<any>) {
-		const sources: Array<Source> = [];
+	if (input instanceof Array) {
+		const sources: Source[] = [];
 
-		for (let i = 0, count: number = input.length; i < count; i++) {
-			const item: any = input[i];
+		for (let i = 0; i < input.length; i++) {
+			const item = input[i];
 			sources.push(new Source(item.name?.toString(), item.contents?.toString()));
 		}
 
@@ -111,9 +114,9 @@ export function sourcesFromInput(input: any): Array<Source> {
 	return [new Source(input.name?.toString(), input.contents?.toString())];
 }
 
-export function wrapFileAccess(callback: any): (v0: string, v1: string) => Source {
+export function wrapFileAccess(callback: any): FileAccess {
 	return (filePath: string, relativeTo: string) => {
-		const result: any = callback(filePath, relativeTo);
+		const result = callback(filePath, relativeTo);
 
 		if (typeof result === 'string') {
 			return new Source(filePath, result);
@@ -123,8 +126,8 @@ export function wrapFileAccess(callback: any): (v0: string, v1: string) => Sourc
 			return null;
 		}
 
-		const name: any = result.name;
-		const contents: any = result.contents;
+		const name = result.name;
+		const contents = result.contents;
 
 		if (typeof name === 'string' && typeof contents === 'string') {
 			return new Source(name, contents);
@@ -134,24 +137,26 @@ export function wrapFileAccess(callback: any): (v0: string, v1: string) => Sourc
 	};
 }
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
 export function commandLineMain(): void {
-	const args: Array<string> = process.argv.slice(2);
-	const options = new CompilerOptions();
-	const sources: Array<Source> = [];
-	let outputFormat = OutputFormat.JSON;
-	let outputPath: string = null;
-	options.fileAccess = (filePath: string, relativeTo: string) => {
-		const name: any = path.resolve(path.dirname(relativeTo), filePath);
+	const args: string[] = process.argv.slice(2);
+	const options: CompilerOptions = {
+		fileAccess(filePath: string, relativeTo: string) {
+			const name = path.resolve(path.dirname(relativeTo), filePath);
 
-		try {
-			return new Source(name, fs.readFileSync(name, 'utf8'));
-		} catch {}
-
-		return null;
+			try {
+				return new Source(name, fs.readFileSync(name, 'utf8'));
+			} catch {
+				return null;
+			}
+		},
+		renamingSymbols: 'all',
+		disableRewriting: false,
+		keepWhitespace: false,
+		trimSymbols: false,
 	};
+	const sources: Source[] = [];
+	let outputFormat: OutputFormat = 'json';
+	let outputPath: string = null;
 
 	for (const arg of args) {
 		if (!arg.startsWith('-')) {
@@ -162,9 +167,9 @@ export function commandLineMain(): void {
 		const value = arg;
 
 		if (value === '--disable-rewriting') {
-			options.compactSyntaxTree = false;
+			options.disableRewriting = true;
 		} else if (value === '--pretty-print') {
-			options.removeWhitespace = false;
+			options.keepWhitespace = true;
 		} else if (value === '--keep-symbols') {
 			options.trimSymbols = false;
 		} else if (value === '--help' || value === '-h') {
@@ -173,23 +178,23 @@ export function commandLineMain(): void {
 		} else if (arg.startsWith('--output=')) {
 			outputPath = arg.slice('--output='.length);
 		} else if (arg.startsWith('--format=')) {
-			const text = arg.slice('--format='.length);
+			const format = arg.slice('--format='.length);
 
-			if (!outputFormats.has(text)) {
-				console.log(`invalid output format "${text}"`);
+			if (!isOutputFormat(format)) {
+				console.log(`invalid output format "${format}"`);
 				process.exit(1);
 			}
 
-			outputFormat = outputFormats.get(text);
+			outputFormat = format;
 		} else if (arg.startsWith('--renaming=')) {
-			const text1 = arg.slice('--renaming='.length);
+			const renaming = arg.slice('--renaming='.length);
 
-			if (!renameSymbols.has(text1)) {
-				console.log(`invalid symbol renaming mode "${text1}"`);
+			if (!isRenameSymbols(renaming)) {
+				console.log(`invalid symbol renaming mode "${renaming}"`);
 				process.exit(1);
 			}
 
-			options.renameSymbols = renameSymbols.get(text1);
+			options.renamingSymbols = renaming;
 		} else {
 			console.log(`invalid flag "${arg}"`);
 			process.exit(1);
@@ -218,33 +223,15 @@ export function commandLineMain(): void {
 }
 
 export function main(): void {
-	const _this: any = (() => {
-		return this;
-	})();
-	const root: any = typeof exports !== 'undefined' ? exports : (_this.GLSLX = {});
-
-	// API exports
-	root.compile = compile;
-	root.compileIDE = compileIDE;
-	root.format = format;
-
 	// Also include a small command-line utility for when this is run in node
 	if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
 		commandLineMain();
 	}
 }
 
-export const outputFormats = new Map();
-outputFormats.set('json', OutputFormat.JSON);
-outputFormats.set('js', OutputFormat.JS);
-outputFormats.set('c++', OutputFormat.CPP);
-outputFormats.set('skew', OutputFormat.SKEW);
-outputFormats.set('rust', OutputFormat.RUST);
+export const _outputFormats = new Set<OutputFormat>(['json', 'js', 'c++', 'skew', 'rust']);
 
-export const renameSymbols = new Map();
-renameSymbols.set('all', RenameSymbols.ALL);
-renameSymbols.set('internal-only', RenameSymbols.INTERNAL);
-renameSymbols.set('none', RenameSymbols.NONE);
+export const _renameSymbols = new Set<RenameSymbols>(['all', 'internal-only', 'none']);
 
 export const rangeToJSON: (v0: Range) => any = (range: Range) => {
 	if (range === null) {
@@ -268,46 +255,30 @@ export const rangeToJSON: (v0: Range) => any = (range: Range) => {
 };
 
 // Do a non-interactive compile
-export function compile(input: any, args: any = {}): any {
+export function compile(input: any, options: Partial<CompilerOptions & { format: OutputFormat }> = {}): any {
 	const sources = sourcesFromInput(input);
 	const log = new Log();
-	const options = new CompilerOptions();
-	options.renameSymbols = renameSymbols.get(args.renaming) ?? RenameSymbols.ALL;
 
-	if (args.disableRewriting) {
-		options.compactSyntaxTree = false;
-	}
-
-	if (args.prettyPrint) {
-		options.removeWhitespace = false;
-	}
-
-	if (args.keepSymbols) {
-		options.trimSymbols = false;
-	}
-
-	if (args.fileAccess) {
-		options.fileAccess = wrapFileAccess(args.fileAccess);
-	}
-
-	const result = _compile(log, sources, options);
+	const result = _compile(log, sources, {
+		disableRewriting: false,
+		keepWhitespace: false,
+		trimSymbols: false,
+		...pick(options, 'disableRewriting', 'keepWhitespace', 'trimSymbols'),
+		renamingSymbols: isRenameSymbols(options.renamingSymbols) ? options.renamingSymbols : 'all',
+		fileAccess: options.fileAccess && wrapFileAccess(options.fileAccess),
+	});
 	return {
 		log: log.toString(),
-		output: result !== null ? result.output(outputFormats.get(args.format) ?? OutputFormat.JSON) : null,
+		output: result?.output(options.format ?? 'json'),
 	};
 }
 
 // Do a compile that can have queries done on it later
-export function compileIDE(input: any, args: any = {}): any {
+export function compileIDE(input: any, options: any = {}): any {
 	const sources = sourcesFromInput(input);
 	const log = new Log();
-	const options = new CompilerOptions();
 
-	if (args.fileAccess) {
-		options.fileAccess = wrapFileAccess(args.fileAccess);
-	}
-
-	const result = typeCheck(log, sources, options);
+	const result = typeCheck(log, sources, options.fileAccess && wrapFileAccess(options.fileAccess));
 	return {
 		unusedSymbols: log.unusedSymbols.map<any>((symbol: _Symbol) => {
 			return {
@@ -422,7 +393,7 @@ export function compileIDE(input: any, args: any = {}): any {
 		},
 		symbolsQuery(message: any) {
 			const name: string = message.source + '';
-			let symbols: Array<any> = null;
+			let symbols: any[] = null;
 
 			for (const source of sources) {
 				if (source.name === name) {
@@ -450,7 +421,7 @@ export function compileIDE(input: any, args: any = {}): any {
 			const name: string = message.source + '';
 			const line: number = message.line | 0;
 			const column: number = message.column | 0;
-			let ranges: Array<any> = null;
+			let ranges: any[] = null;
 			let symbol: string = null;
 
 			for (const source of sources) {
@@ -480,7 +451,7 @@ export function compileIDE(input: any, args: any = {}): any {
 			const name: string = message.source + '';
 			const line: number = message.line | 0;
 			const column: number = message.column | 0;
-			let completions: Array<any> = [];
+			let completions: any[] = [];
 
 			for (const source of sources) {
 				if (source.name === name) {
@@ -509,7 +480,7 @@ export function compileIDE(input: any, args: any = {}): any {
 			const name: string = message.source + '';
 			const line: number = message.line | 0;
 			const column: number = message.column | 0;
-			let signatures: Array<any> = [];
+			let signatures: any[] = [];
 			let activeArgument = -1;
 			let activeSignature = -1;
 

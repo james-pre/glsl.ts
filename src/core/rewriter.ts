@@ -5,7 +5,7 @@ import { Type } from './type.js';
 
 export class Rewriter {
 	_codeWasChanged: boolean;
-	_variables: Array<VariableSymbol>;
+	_variables: VariableSymbol[];
 	_useCounts: Map<number, number>;
 	_mutationCounts: Map<number, number>;
 	_referencedExtensions: Map<string, number>;
@@ -14,7 +14,7 @@ export class Rewriter {
 		while (true) {
 			const rewriter = new Rewriter();
 
-			if (options.compactSyntaxTree) {
+			if (!options.disableRewriting) {
 				rewriter._compact(global);
 			}
 
@@ -38,7 +38,7 @@ export class Rewriter {
 		//
 		// Instead of trying to preserve all of this during various transforms, just
 		// add it back at the end.
-		if (options.compactSyntaxTree) {
+		if (!options.disableRewriting) {
 			Rewriter._addBracesToAvoidDanglingElseIssues(global);
 		}
 	}

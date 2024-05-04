@@ -1,4 +1,4 @@
-import { assert } from 'console';
+import { pick } from 'utilium';
 import { API, API_NAME } from './api.js';
 import { Emitter } from './emitter.js';
 import { Log } from './log.js';
@@ -13,34 +13,26 @@ import { Source } from './source.js';
 import { FunctionSymbol, SymbolFlags } from './symbol.js';
 import { TokenPurpose, tokenize } from './tokenizer.js';
 
-export const enum OutputFormat {
-	JSON,
-	JS,
-	CPP,
-	SKEW,
-	RUST,
+export type OutputFormat = 'json' | 'js' | 'c++' | 'skew' | 'rust';
+
+export function isOutputFormat(arg: string): arg is OutputFormat {
+	return ['json', 'js', 'c++', 'skew', 'rust'].includes(arg);
 }
 
-export const enum RenameSymbols {
-	ALL,
-	INTERNAL,
-	NONE,
+export type RenameSymbols = 'all' | 'internal-only' | 'none';
+
+export function isRenameSymbols(arg: string): arg is RenameSymbols {
+	return ['all', 'internal-only', 'none'].includes(arg);
 }
 
-export class CompilerOptions {
-	compactSyntaxTree: boolean;
-	removeWhitespace: boolean;
-	renameSymbols: RenameSymbols;
+export type FileAccess = (v0: string, v1: string) => Source;
+
+export interface CompilerOptions {
+	disableRewriting: boolean;
+	keepWhitespace: boolean;
+	renamingSymbols: RenameSymbols;
 	trimSymbols: boolean;
-	fileAccess: (v0: string, v1: string) => Source;
-
-	constructor() {
-		this.compactSyntaxTree = true;
-		this.removeWhitespace = true;
-		this.renameSymbols = RenameSymbols.ALL;
-		this.trimSymbols = true;
-		this.fileAccess = null;
-	}
+	fileAccess?: FileAccess;
 }
 
 export const enum ExtensionBehavior {
@@ -52,161 +44,71 @@ export const enum ExtensionBehavior {
 }
 
 export class CompilerData {
-	currentExtensions: Map<string, ExtensionBehavior>;
-	fileAccess: (v0: string, v1: string) => Source;
-	_nextSymbolID: number;
+	public currentExtensions: Map<string, ExtensionBehavior> = new Map();
+	protected _nextSymbolID: number = 0;
 
-	nextSymbolID(): number {
+	public nextSymbolID(): number {
 		this._nextSymbolID = this._nextSymbolID + 1;
 		return this._nextSymbolID;
 	}
 
-	extensionBehavior(name: string): ExtensionBehavior {
+	public extensionBehavior(name: string): ExtensionBehavior {
 		return this.currentExtensions.get(name) ?? ExtensionBehavior.DEFAULT;
 	}
 
-	constructor(fileAccess: (v0: string, v1: string) => Source) {
-		this.currentExtensions = new Map();
-		this.fileAccess = fileAccess;
-		this._nextSymbolID = 0;
-	}
+	public constructor(public fileAccess: FileAccess) {}
 }
 
 export class CompilerResult {
-	shaders: Array<Source>;
+	shaders: Source[];
 	renaming: Map<string, string>;
 
-	output(format: OutputFormat): string {
-		switch (format) {
-			case OutputFormat.JSON: {
-				const map: any = {};
-				Array.from(this.renaming.keys()).forEach((key: string) => {
-					assert(this.renaming.has(key));
-					map[key] = this.renaming.get(key);
-				});
-				return (
-					JSON.stringify(
-						{
-							shaders:
-								this.shaders === null
-									? null
-									: this.shaders.map<any>((source: Source) => {
-											return {
-												name: source.name,
-												contents: source.contents,
-											};
-										}),
-							renaming: map,
-						},
-						null,
-						2
-					) + '\n'
-				);
-			}
+	public output(format: OutputFormat): string {
+		if (format == 'json') {
+			const shaders = !this.shaders ? null : this.shaders.map((source: Source) => pick(source, 'name', 'contents'));
+			return JSON.stringify({ shaders, renaming: Object.fromEntries(this.renaming) }, null, 2) + '\n';
+		}
 
-			case OutputFormat.JS: {
-				if (this.shaders !== null) {
-					let code = '';
+		if (!this.shaders) {
+			return null;
+		}
 
-					for (const shader of this.shaders) {
-						code += `export const GLSLX_SOURCE_${this._transformName(shader.name)} = ${JSON.stringify(shader.contents)}\n`;
-					}
+		let code = '';
 
-					if (this.renaming !== null && !(Array.from(this.renaming.keys()).length === 0)) {
-						code += '\n';
+		if (format == 'c++') {
+			code += '#ifndef GLSLX_STRINGS_H\n#define GLSLX_STRINGS_H\n\n';
+		}
 
-						for (const name of Array.from(this.renaming.keys())) {
-							assert(this.renaming.has(name));
-							code += `export const GLSLX_NAME_${this._transformName(name)} = ${JSON.stringify(this.renaming.get(name))}\n`;
-						}
-					}
+		const prefix = {
+			js: 'export const',
+			'c++': 'static const char *',
+			skew: 'const',
+			rust: 'pub static',
+		} satisfies Record<Exclude<OutputFormat, 'json'>, string>;
 
-					return code;
-				}
-				break;
-			}
+		for (const shader of this.shaders) {
+			code += `${prefix} GLSLX_SOURCE_${this._transformName(shader.name)}${format == 'rust' ? ': &str' : ''} = ${JSON.stringify(shader.contents)}${format == 'skew' ? '' : ';'}\n`;
+		}
 
-			case OutputFormat.CPP: {
-				if (this.shaders !== null) {
-					let code = '';
-					code += '#ifndef GLSLX_STRINGS_H\n';
-					code += '#define GLSLX_STRINGS_H\n';
-					code += '\n';
+		code += '\n';
 
-					for (const shader of this.shaders) {
-						code += `static const char *GLSLX_SOURCE_${this._transformName(shader.name)} = ${JSON.stringify(shader.contents)};\n`;
-					}
-
-					code += '\n';
-
-					if (this.renaming !== null) {
-						for (const name of Array.from(this.renaming.keys())) {
-							assert(this.renaming.has(name));
-							code += `static const char *GLSLX_NAME_${this._transformName(name)} = ${JSON.stringify(this.renaming.get(name))};\n`;
-						}
-
-						code += '\n';
-					}
-
-					code += '#endif\n';
-					return code;
-				}
-				break;
-			}
-
-			case OutputFormat.SKEW: {
-				if (this.shaders !== null) {
-					let code = '';
-
-					for (const shader of this.shaders) {
-						code += `const GLSLX_SOURCE_${this._transformName(shader.name)} = ${JSON.stringify(shader.contents)}\n`;
-					}
-
-					if (this.renaming !== null && !(Array.from(this.renaming.keys()).length === 0)) {
-						code += '\n';
-
-						for (const name of Array.from(this.renaming.keys())) {
-							assert(this.renaming.has(name));
-							code += `const GLSLX_NAME_${this._transformName(name)} = ${JSON.stringify(this.renaming.get(name))}\n`;
-						}
-					}
-
-					return code;
-				}
-				break;
-			}
-
-			case OutputFormat.RUST: {
-				if (this.shaders !== null) {
-					let code = '';
-
-					for (const shader of this.shaders) {
-						code += `pub static GLSLX_SOURCE_${this._transformName(shader.name)}: &str = ${JSON.stringify(shader.contents)};\n`;
-					}
-
-					if (this.renaming !== null && !(Array.from(this.renaming.keys()).length === 0)) {
-						code += '\n';
-
-						for (const name of Array.from(this.renaming.keys())) {
-							assert(this.renaming.has(name));
-							code += `pub static GLSLX_NAME_${this._transformName(name)}: &str = ${JSON.stringify(this.renaming.get(name))};\n`;
-						}
-					}
-
-					return code;
-				}
-				break;
+		if (this.renaming) {
+			for (const [name, value] of this.renaming) {
+				code += `${prefix} GLSLX_NAME_${this._transformName(name)}${format == 'rust' ? ': &str' : ''} = ${JSON.stringify(value)}${format == 'skew' ? '' : ';'}\n`;
 			}
 		}
 
-		return null;
+		if (format == 'c++') {
+			code += '#endif\n';
+		}
+		return code;
 	}
 
-	_transformName(name: string): string {
+	protected _transformName(name: string): string {
 		return name.replace(new RegExp('([a-z0-9])([A-Z])', 'g'), '$1_$2').toUpperCase();
 	}
 
-	constructor(shaders: Array<Source>, renaming: Map<string, string>) {
+	public constructor(shaders: Source[], renaming: Map<string, string>) {
 		this.shaders = shaders;
 		this.renaming = renaming;
 	}
@@ -214,15 +116,15 @@ export class CompilerResult {
 
 export class TypeCheckResult {
 	global: Node;
-	includes: Array<Include>;
+	includes: Include[];
 
-	constructor(global: Node, includes: Array<Include>) {
+	constructor(global: Node, includes: Include[]) {
 		this.global = global;
 		this.includes = includes;
 	}
 }
 
-export function typeCheck(log: Log, sources: Array<Source>, options: CompilerOptions): TypeCheckResult {
+export function typeCheck(log: Log, sources: Source[], fileAccess: FileAccess): TypeCheckResult {
 	if (log.hasErrors()) {
 		return null;
 	}
@@ -236,7 +138,7 @@ export function typeCheck(log: Log, sources: Array<Source>, options: CompilerOpt
 
 	const global = Node.createGlobal();
 	const scope = new Scope(ScopeKind.GLOBAL, null);
-	const data = new CompilerData(options.fileAccess);
+	const data = new CompilerData(fileAccess);
 	const resolver = new Resolver(log, data);
 
 	// Parse everything next
@@ -254,7 +156,7 @@ export function typeCheck(log: Log, sources: Array<Source>, options: CompilerOpt
 	return new TypeCheckResult(global, includes);
 }
 
-export function compile(log: Log, sources: Array<Source>, options: CompilerOptions): CompilerResult {
+export function compile(log: Log, sources: Source[], options: CompilerOptions): CompilerResult {
 	if (log.hasErrors()) {
 		return null;
 	}
@@ -287,8 +189,8 @@ export function compile(log: Log, sources: Array<Source>, options: CompilerOptio
 	// and in theory we could quickly export all shaders from that, but in
 	// practice it's simpler if the source code is just compiled over again once
 	// per shader.
-	const names: Array<string> = [];
-	const globals: Array<Node> = [];
+	const names: string[] = [];
+	const globals: Node[] = [];
 
 	for (const root of _collectAllExportedFunctions(scope)) {
 		const shaderGlobal = Node.createGlobal();
@@ -313,7 +215,7 @@ export function compile(log: Log, sources: Array<Source>, options: CompilerOptio
 	}
 
 	// Rename everything together
-	const shaders: Array<Source> = [];
+	const shaders: Source[] = [];
 	const renaming = Renamer.rename(globals, options);
 
 	for (let i = 0; i < names.length; i++) {
@@ -323,10 +225,10 @@ export function compile(log: Log, sources: Array<Source>, options: CompilerOptio
 	return new CompilerResult(shaders, renaming);
 }
 
-export function _collectAllExportedFunctions(scope: Scope): Array<FunctionSymbol> {
-	const symbols: Array<FunctionSymbol> = [];
+export function _collectAllExportedFunctions(scope: Scope): FunctionSymbol[] {
+	const symbols: FunctionSymbol[] = [];
 
-	for (const symbol of Array.from(scope.symbols.values())) {
+	for (const symbol of scope.symbols.values()) {
 		if (symbol.isFunction() && symbol.isExported()) {
 			symbols.push(symbol.asFunction());
 		}
@@ -336,14 +238,14 @@ export function _collectAllExportedFunctions(scope: Scope): Array<FunctionSymbol
 }
 
 export function _unexportAllFunctionsExcept(scope: Scope, _function: FunctionSymbol): void {
-	for (const symbol of Array.from(scope.symbols.values())) {
+	for (const symbol of scope.symbols.values()) {
 		if (symbol.id !== _function.id) {
 			symbol.flags &= ~SymbolFlags.EXPORTED;
 		} else {
 			symbol.name = 'main';
 			const sibling = symbol.asFunction().sibling;
 
-			if (sibling !== null) {
+			if (sibling) {
 				sibling.name = symbol.name;
 			}
 		}

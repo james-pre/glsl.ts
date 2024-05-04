@@ -21,9 +21,9 @@ export const enum ParseTypeMode {
 }
 
 export class ParseResult {
-	includes: Array<Include>;
+	includes: Include[];
 
-	constructor(includes: Array<Include>) {
+	constructor(includes: Include[]) {
 		this.includes = includes;
 	}
 }
@@ -56,15 +56,11 @@ export function binaryParselet(kind: NodeKind): (v0: ParserContext, v1: Node, v2
 }
 
 export function parseInt(text: string): number {
-	if (text.length > 1 && text.charCodeAt(0) === 48 && text.charCodeAt(1) !== 120 && text.charCodeAt(1) !== 88) {
-		return parseInt(text, 8);
+	if (text.length > 1 && text[0] === '0' && !text[1].toLowerCase().startsWith('0x')) {
+		return globalThis.parseInt(text, 8);
 	}
 
-	return text | 0;
-}
-
-export function parseFloat(text: string): number {
-	return +text;
+	return globalThis.parseInt(text);
 }
 
 export function createExpressionParser(): Pratt {
@@ -87,7 +83,7 @@ export function createExpressionParser(): Pratt {
 		return Node.createInt(parseInt(token.range.toString())).withRange(token.range);
 	});
 	pratt.literal(TokenKind.FLOAT_LITERAL, (context: ParserContext, token: Token) => {
-		return Node.createFloat(parseFloat(token.range.toString())).withRange(token.range);
+		return Node.createFloat(+token.range.toString()).withRange(token.range);
 	});
 	pratt.literal(TokenKind.BOOL, typeParselet(Type.BOOL));
 	pratt.literal(TokenKind.BVEC2, typeParselet(Type.BVEC2));
@@ -522,7 +518,7 @@ export function parseVersion(context: ParserContext): Node {
 		return null;
 	}
 
-	return Node.createVersion(range.toString() | 0).withRange(context.spanSince(token.range));
+	return Node.createVersion(+range.toString() | 0).withRange(context.spanSince(token.range));
 }
 
 export function parseWhile(context: ParserContext): Node {
@@ -608,7 +604,7 @@ export function parsePrecision(context: ParserContext): Node {
 	return checkForSemicolon(context, token.range, Node.createPrecision(flag, type));
 }
 
-export function parseStruct(context: ParserContext, flags: number, comments: Array<string>): Node {
+export function parseStruct(context: ParserContext, flags: number, comments: string[]): Node {
 	const name = context.current().range;
 
 	if (!context.expect(TokenKind.IDENTIFIER)) {
@@ -704,7 +700,7 @@ export function checkForSemicolon(context: ParserContext, range: Range, node: No
 	return node.withRange(context.spanSince(range));
 }
 
-export function parseAfterType(context: ParserContext, range: Range, flags: SymbolFlags, type: Node, allow: Allow, comments: Array<string>): Node {
+export function parseAfterType(context: ParserContext, range: Range, flags: SymbolFlags, type: Node, allow: Allow, comments: string[]): Node {
 	const name = context.current().range;
 
 	if (flags === 0 && !context.peek(TokenKind.IDENTIFIER)) {
@@ -734,7 +730,7 @@ export function parseAfterType(context: ParserContext, range: Range, flags: Symb
 	return variables.withRange(context.spanSince(range));
 }
 
-export function parseLeadingComments(context: ParserContext): Array<string> {
+export function parseLeadingComments(context: ParserContext): string[] {
 	const firstToken = context.current();
 	const comments = firstToken.comments;
 
@@ -743,7 +739,7 @@ export function parseLeadingComments(context: ParserContext): Array<string> {
 	}
 
 	let nextRangeStart = firstToken.range.start;
-	let leadingComments: Array<string> = null;
+	let leadingComments: string[] = null;
 
 	// Scan the comments backwards
 	for (let i = comments.length - 1; i >= 0; i = i - 1) {
@@ -1164,7 +1160,7 @@ export function parseType(context: ParserContext, mode: ParseTypeMode): Node {
 	return Node.createType(type).withRange(context.spanSince(token.range));
 }
 
-export function parseFunction(flags: SymbolFlags, type: Node, name: Range, context: ParserContext, comments: Array<string>): Node {
+export function parseFunction(flags: SymbolFlags, type: Node, name: Range, context: ParserContext, comments: string[]): Node {
 	const originalScope = context.scope();
 	const _function = new FunctionSymbol(context.compilationData.nextSymbolID(), name, name.toString(), new Scope(ScopeKind.FUNCTION, originalScope));
 	_function.flags |= context.flags | flags | (_function.name === 'main' ? SymbolFlags.EXPORTED : (0 as SymbolFlags));
@@ -1340,7 +1336,7 @@ export function parseArraySize(context: ParserContext, variable: VariableSymbol)
 	return true;
 }
 
-export function parseVariables(flags: number, type: Node, name: Range, context: ParserContext, comments: Array<string>): Node {
+export function parseVariables(flags: number, type: Node, name: Range, context: ParserContext, comments: string[]): Node {
 	const variables = Node.createVariables(context.flags | flags, type);
 
 	while (true) {
@@ -1452,7 +1448,7 @@ export function parseStatements(context: ParserContext, parent: Node, mode: Vari
 	return true;
 }
 
-export function parse(log: Log, tokens: Array<Token>, global: Node, data: CompilerData, scope: Scope, resolver: Resolver): ParseResult {
+export function parse(log: Log, tokens: Token[], global: Node, data: CompilerData, scope: Scope, resolver: Resolver): ParseResult {
 	if (pratt === null) {
 		pratt = createExpressionParser();
 	}

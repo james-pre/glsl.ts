@@ -39,7 +39,7 @@ export class StringIterator {
 	}
 }
 
-export function string_fromCodePoints(codePoints: Array<number>): string {
+export function string_fromCodePoints(codePoints: number[]): string {
 	let string = '';
 
 	for (const codePoint of codePoints) {

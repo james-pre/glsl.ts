@@ -39,11 +39,11 @@ export class Include {
 
 export class ParserContext {
 	log: Log;
-	_tokens: Array<Token>;
+	_tokens: Token[];
 	compilationData: CompilerData;
 	resolver: Resolver;
 	processedIncludes: Map<string, boolean>;
-	includes: Array<Include>;
+	includes: Include[];
 	flags: SymbolFlags;
 	_index: number;
 	_scope: Scope;
@@ -118,7 +118,7 @@ export class ParserContext {
 		this._scope = this._scope.parent;
 	}
 
-	constructor(log: Log, _tokens: Array<Token>, compilationData: CompilerData, resolver: Resolver, processedIncludes: Map<string, boolean>) {
+	constructor(log: Log, _tokens: Token[], compilationData: CompilerData, resolver: Resolver, processedIncludes: Map<string, boolean>) {
 		this.log = log;
 		this._tokens = _tokens;
 		this.compilationData = compilationData;
