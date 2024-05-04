@@ -1,10 +1,10 @@
 import { Node, NodeKind, NodeKind_isLoop } from './node.js';
 
 export class ControlFlowAnalyzer {
-	_isLoopBreakTarget: boolean[] = [];
-	_isControlFlowLive: boolean[] = [];
+	protected _isLoopBreakTarget: boolean[] = [];
+	protected _isControlFlowLive: boolean[] = [];
 
-	pushBlock(node: Node): void {
+	public pushBlock(node: Node): void {
 		const parent = node.parent();
 
 		// Push control flow
@@ -16,7 +16,7 @@ export class ControlFlowAnalyzer {
 		}
 	}
 
-	popBlock(node: Node): void {
+	public popBlock(node: Node): void {
 		const parent = node.parent();
 
 		// Pop control flow
@@ -39,7 +39,7 @@ export class ControlFlowAnalyzer {
 		}
 	}
 
-	visitStatement(node: Node): void {
+	public visitStatement(node: Node): void {
 		if (!this._isControlFlowLive.at(-1)) {
 			return;
 		}
