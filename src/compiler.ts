@@ -60,8 +60,14 @@ export class CompilerData {
 }
 
 export class CompilerResult {
-	shaders: Source[];
-	renaming: Map<string, string>;
+	public constructor(
+		public shaders: Source[],
+		public renaming: Map<string, string>
+	) {}
+
+	protected _transformName(name: string): string {
+		return name.replace(new RegExp('([a-z0-9])([A-Z])', 'g'), '$1_$2').toUpperCase();
+	}
 
 	public output(format: OutputFormat): string {
 		if (format == 'json') {
@@ -103,25 +109,11 @@ export class CompilerResult {
 		}
 		return code;
 	}
-
-	protected _transformName(name: string): string {
-		return name.replace(new RegExp('([a-z0-9])([A-Z])', 'g'), '$1_$2').toUpperCase();
-	}
-
-	public constructor(shaders: Source[], renaming: Map<string, string>) {
-		this.shaders = shaders;
-		this.renaming = renaming;
-	}
 }
 
-export class TypeCheckResult {
+export interface TypeCheckResult {
 	global: Node;
 	includes: Include[];
-
-	constructor(global: Node, includes: Include[]) {
-		this.global = global;
-		this.includes = includes;
-	}
 }
 
 export function typeCheck(log: Log, sources: Source[], fileAccess: FileAccess): TypeCheckResult {
@@ -153,7 +145,7 @@ export function typeCheck(log: Log, sources: Source[], fileAccess: FileAccess): 
 	resolver.resolveGlobal(global);
 
 	// Always return even when there were errors since the partial result is still useful
-	return new TypeCheckResult(global, includes);
+	return { global, includes };
 }
 
 export function compile(log: Log, sources: Source[], options: CompilerOptions): CompilerResult {
@@ -185,10 +177,11 @@ export function compile(log: Log, sources: Source[], options: CompilerOptions): 
 		return null;
 	}
 
-	// Multiple export mode is more complicated. Everything is already compiled,
-	// and in theory we could quickly export all shaders from that, but in
-	// practice it's simpler if the source code is just compiled over again once
-	// per shader.
+	/* 
+		Multiple export mode is more complicated. Everything is already compiled,
+		and in theory we could quickly export all shaders from that, but in practice
+		it's simpler if the source code is just compiled over again once per shader.
+	*/
 	const names: string[] = [];
 	const globals: Node[] = [];
 
@@ -200,8 +193,8 @@ export function compile(log: Log, sources: Source[], options: CompilerOptions): 
 		const shaderResolver = new Resolver(shaderLog, shaderData);
 
 		// Parse everything again
-		for (const source2 of sources) {
-			parse(shaderLog, source2.tokens, shaderGlobal, shaderData, shaderScope, shaderResolver);
+		for (const source of sources) {
+			parse(shaderLog, source.tokens, shaderGlobal, shaderData, shaderScope, shaderResolver);
 		}
 
 		// Flow types through the tree
@@ -239,7 +232,7 @@ export function _collectAllExportedFunctions(scope: Scope): FunctionSymbol[] {
 
 export function _unexportAllFunctionsExcept(scope: Scope, _function: FunctionSymbol): void {
 	for (const symbol of scope.symbols.values()) {
-		if (symbol.id !== _function.id) {
+		if (symbol.id != _function.id) {
 			symbol.flags &= ~SymbolFlags.EXPORTED;
 		} else {
 			symbol.name = 'main';

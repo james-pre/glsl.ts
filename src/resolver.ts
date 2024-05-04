@@ -6,7 +6,7 @@ import { Log } from './log.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isBinaryAssign, NodeKind_isExpression, NodeKind_isStatement, NodeKind_isUnary, NodeKind_isUnaryAssign } from './node.js';
 import { Range } from './range.js';
 import * as swizzle from './swizzle.js';
-import { FunctionSymbol, VariableKind, _Symbol } from './symbol.js';
+import { FunctionSymbol, VariableKind, BaseSymbol } from './symbol.js';
 import { Type } from './type.js';
 
 export class Resolver {
@@ -41,12 +41,12 @@ export class Resolver {
 		// early during parsing due to how the language works. However, we don't
 		// want them to show up as unused in the IDE. Post-process the unused
 		// symbol list to filter out constants that were later used.
-		this._log.unusedSymbols = this._log.unusedSymbols.filter((x: _Symbol) => {
+		this._log.unusedSymbols = this._log.unusedSymbols.filter((x: BaseSymbol) => {
 			return x.useCount === 0;
 		});
 	}
 
-	_maybeMarkAsUnused(symbol: _Symbol): void {
+	_maybeMarkAsUnused(symbol: BaseSymbol): void {
 		if (symbol.range.source.name !== API_NAME && symbol.useCount === 0 && !symbol.isExported()) {
 			this._log.unusedSymbols.push(symbol);
 		}
@@ -69,7 +69,7 @@ export class Resolver {
 
 			case NodeKind.VARIABLE: {
 				const symbol = node.symbol.asVariable();
-				this._maybeMarkAsUnused(symbol as _Symbol);
+				this._maybeMarkAsUnused(symbol as BaseSymbol);
 				this.resolveNode(symbol.type);
 
 				// Variables must have a type
@@ -164,7 +164,7 @@ export class Resolver {
 
 			case NodeKind.FUNCTION: {
 				const symbol1 = node.symbol.asFunction();
-				this._maybeMarkAsUnused(symbol1 as _Symbol);
+				this._maybeMarkAsUnused(symbol1 as BaseSymbol);
 
 				for (const argument of symbol1._arguments) {
 					this.resolveNode(argument.type);
@@ -214,7 +214,7 @@ export class Resolver {
 
 			case NodeKind.STRUCT: {
 				const symbol2 = node.symbol.asStruct();
-				this._maybeMarkAsUnused(symbol2 as _Symbol);
+				this._maybeMarkAsUnused(symbol2 as BaseSymbol);
 				this._resolveChildren(node);
 
 				// A struct loses operator "==" and "!=" when it contains a type without those operators
@@ -575,7 +575,7 @@ export class Resolver {
 			if (type.symbol !== null && type.symbol.isStruct()) {
 				for (const variable of type.symbol.asStruct().variables) {
 					if (variable.name === name) {
-						node.symbol = variable as _Symbol;
+						node.symbol = variable as BaseSymbol;
 						this.resolveNode(variable.type);
 						node.resolvedType = variable.type.resolvedType;
 						break;
@@ -654,7 +654,7 @@ export class Resolver {
 			}
 		}
 
-		node.callTarget().symbol = overload1 as _Symbol;
+		node.callTarget().symbol = overload1 as BaseSymbol;
 		node.resolvedType = overload1.returnType.resolvedType;
 	}
 

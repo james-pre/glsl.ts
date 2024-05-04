@@ -1,6 +1,6 @@
 import { CompilerOptions, RenameSymbols } from './compiler.js';
 import { Node, NodeKind } from './node.js';
-import { _Symbol } from './symbol.js';
+import { BaseSymbol } from './symbol.js';
 import { keywords, reservedWords } from './tokenizer.js';
 import { UnionFind } from './unionfind.js';
 import { compare } from './utils.js';
@@ -106,13 +106,13 @@ export class Renamer {
 				this._enclosingFunctionLabel = this._symbolInfoMap.get(node.symbol.id).label;
 
 				if (_function.sibling !== null) {
-					this._namingGroupsUnionFind.union(this._enclosingFunctionLabel, this._recordSymbol(_function.sibling as _Symbol).label);
+					this._namingGroupsUnionFind.union(this._enclosingFunctionLabel, this._recordSymbol(_function.sibling as BaseSymbol).label);
 				}
 
 				this._scanForSymbols(_function.returnType);
 
 				for (const argument of _function._arguments) {
-					(ref1 = this._recordSymbol(argument as _Symbol)).useCount = ref1.useCount + 1;
+					(ref1 = this._recordSymbol(argument as BaseSymbol)).useCount = ref1.useCount + 1;
 					this._scanForSymbols(argument.type);
 				}
 
@@ -126,7 +126,7 @@ export class Renamer {
 		}
 	}
 
-	_recordSymbol(symbol: _Symbol): Renamer.SymbolInfo {
+	_recordSymbol(symbol: BaseSymbol): Renamer.SymbolInfo {
 		let info = this._symbolInfoMap.get(symbol.id);
 
 		if (!info) {
@@ -240,7 +240,7 @@ export namespace Renamer {
 		name: string;
 		label: number;
 
-		symbols: Map<number, _Symbol>; // One from each duplicate shader compilation
+		symbols: Map<number, BaseSymbol>; // One from each duplicate shader compilation
 		useCount: number;
 		isArgumentOrLocalVariable: boolean;
 

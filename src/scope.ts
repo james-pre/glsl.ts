@@ -1,4 +1,4 @@
-import { _Symbol } from './symbol.js';
+import { BaseSymbol } from './symbol.js';
 
 export const enum ScopeKind {
 	FUNCTION,
@@ -11,20 +11,20 @@ export const enum ScopeKind {
 export class Scope {
 	kind: ScopeKind;
 	parent: Scope;
-	symbols: Map<string, _Symbol>;
+	symbols: Map<string, BaseSymbol>;
 
-	define(symbol: _Symbol): void {
+	define(symbol: BaseSymbol): void {
 		console.assert(!this.symbols.has(symbol.name));
 		this.symbols.set(symbol.name, symbol);
 	}
 
-	redefine(symbol: _Symbol): void {
+	redefine(symbol: BaseSymbol): void {
 		console.assert(this.symbols.has(symbol.name));
 		console.assert(this.symbols.get(symbol.name) !== symbol);
 		this.symbols.set(symbol.name, symbol);
 	}
 
-	find(name: string): _Symbol {
+	find(name: string): BaseSymbol {
 		const symbol = this.symbols.get(name) ?? null;
 
 		if (symbol !== null) {

@@ -6,7 +6,7 @@ import { Include, ParserContext, Pratt, Precedence } from './pratt.js';
 import { Range } from './range.js';
 import { Resolver } from './resolver.js';
 import { Scope, ScopeKind } from './scope.js';
-import { FunctionSymbol, StructSymbol, SymbolFlags, VariableKind, VariableSymbol, _Symbol } from './symbol.js';
+import { FunctionSymbol, StructSymbol, SymbolFlags, VariableKind, VariableSymbol, BaseSymbol } from './symbol.js';
 import { Token, TokenKind, TokenPurpose, tokenize } from './tokenizer.js';
 import { Type } from './type.js';
 
@@ -615,7 +615,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	symbol.flags |= context.flags | flags;
 	symbol.comments = comments;
 
-	if (!tryToDefineUniquelyInScope(context, symbol as _Symbol)) {
+	if (!tryToDefineUniquelyInScope(context, symbol as BaseSymbol)) {
 		return null;
 	}
 
@@ -1200,7 +1200,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 			argument.flags |= argumentFlags;
 			argument.type = argumentType;
 			_function._arguments.push(argument);
-			tryToDefineUniquelyInScope(context, argument as _Symbol);
+			tryToDefineUniquelyInScope(context, argument as BaseSymbol);
 
 			// Array size
 			if (!parseArraySize(context, argument)) {
@@ -1223,7 +1223,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 
 	// Merge adjacent function symbols to support overloading
 	if (previous === null) {
-		originalScope.define(_function as _Symbol);
+		originalScope.define(_function as BaseSymbol);
 	} else if (previous.isFunction()) {
 		for (let link = previous.asFunction(); link !== null; link = link.previousOverload) {
 			if (!link.hasSameArgumentTypesAs(_function)) {
@@ -1261,7 +1261,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 
 		// Use a singly-linked list to store the function overloads
 		_function.previousOverload = previous.asFunction();
-		originalScope.redefine(_function as _Symbol);
+		originalScope.redefine(_function as BaseSymbol);
 	} else {
 		context.log.syntaxErrorDuplicateSymbolDefinition(name, previous.range);
 		return null;
@@ -1380,7 +1380,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 		}
 
 		variables.appendChild(variable);
-		tryToDefineUniquelyInScope(context, symbol as _Symbol);
+		tryToDefineUniquelyInScope(context, symbol as BaseSymbol);
 
 		// Are there more variables in this statement?
 		if (!context.eat(TokenKind.COMMA)) {
@@ -1396,7 +1396,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 	}
 }
 
-export function tryToDefineUniquelyInScope(context: ParserContext, symbol: _Symbol): boolean {
+export function tryToDefineUniquelyInScope(context: ParserContext, symbol: BaseSymbol): boolean {
 	const previous = context.scope().symbols.get(symbol.name) ?? null;
 
 	if (previous !== null) {

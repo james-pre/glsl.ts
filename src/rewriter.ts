@@ -1,6 +1,6 @@
 import { CompilerData, CompilerOptions, ExtensionBehavior } from './compiler.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isJump, NodeKind_isLiteral } from './node.js';
-import { VariableKind, VariableSymbol, _Symbol } from './symbol.js';
+import { VariableKind, VariableSymbol, BaseSymbol } from './symbol.js';
 import { Type } from './type.js';
 
 export class Rewriter {
@@ -194,7 +194,7 @@ export class Rewriter {
 			case NodeKind.FUNCTION: {
 				const _function = node.symbol.asFunction();
 
-				if (this._isUnused(_function as _Symbol) && !_function.isExported()) {
+				if (this._isUnused(_function as BaseSymbol) && !_function.isExported()) {
 					node.remove();
 					this._reportCodeChange();
 				} else if (_function.block !== null) {
@@ -235,7 +235,7 @@ export class Rewriter {
 		}
 	}
 
-	_literalConstantForSymbol(symbol: _Symbol): Node {
+	_literalConstantForSymbol(symbol: BaseSymbol): Node {
 		if (this._hasLiteralConstantValue(symbol)) {
 			return symbol.constantValue.clone();
 		}
@@ -261,18 +261,18 @@ export class Rewriter {
 		}
 	}
 
-	_isUnused(symbol: _Symbol): boolean {
+	_isUnused(symbol: BaseSymbol): boolean {
 		return (
 			(this._useCounts.get(symbol.id) ?? -1) === 0 &&
 			((!symbol.isFunction() || symbol.asFunction().sibling === null || this._useCounts.get(symbol.asFunction().sibling.id)) ?? -1) === 0
 		);
 	}
 
-	_hasLiteralConstantValue(symbol: _Symbol): boolean {
+	_hasLiteralConstantValue(symbol: BaseSymbol): boolean {
 		return symbol.constantValue !== null && NodeKind_isLiteral(symbol.constantValue.kind);
 	}
 
-	_isNonMutatedLiteral(symbol: _Symbol): boolean {
+	_isNonMutatedLiteral(symbol: BaseSymbol): boolean {
 		return (this._mutationCounts.get(symbol.id) ?? -1) === 0 && symbol.asVariable().value() !== null && NodeKind_isLiteral(symbol.asVariable().value().kind);
 	}
 

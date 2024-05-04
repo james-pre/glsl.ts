@@ -1,5 +1,5 @@
 import { Range } from './range.js';
-import { _Symbol } from './symbol.js';
+import { BaseSymbol } from './symbol.js';
 import { Token, TokenKind } from './tokenizer.js';
 import { Type } from './type.js';
 
@@ -35,7 +35,7 @@ export class Diagnostic {
 
 export class Log {
 	diagnostics: Diagnostic[];
-	unusedSymbols: _Symbol[];
+	unusedSymbols: BaseSymbol[];
 	warningCount: number;
 	errorCount: number;
 	_prevErrorRange: Range;

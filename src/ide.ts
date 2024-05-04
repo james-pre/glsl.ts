@@ -3,7 +3,7 @@ import { Node, NodeKind } from './node.js';
 import { Range } from './range.js';
 import { Source } from './source.js';
 import * as swizzle from './swizzle.js';
-import { FunctionSymbol, StructSymbol, SymbolFlags_toString, VariableSymbol, _Symbol } from './symbol.js';
+import { FunctionSymbol, StructSymbol, SymbolFlags_toString, VariableSymbol, BaseSymbol } from './symbol.js';
 import { Type } from './type.js';
 import { compare, compare_string } from './utils.js';
 
@@ -21,7 +21,7 @@ export class SymbolQuery {
 	source: Source;
 	index: number;
 	resolvedType: Type;
-	symbol: _Symbol;
+	symbol: BaseSymbol;
 	range: Range;
 	swizzleName: string;
 	swizzleType: Type;
@@ -46,7 +46,7 @@ export class SymbolQuery {
 		return range.source === this.source && range.touches(this.index);
 	}
 
-	_visitSymbol(query: _Symbol): boolean {
+	_visitSymbol(query: BaseSymbol): boolean {
 		if (this._touches(query.range)) {
 			this.resolvedType = query.resolvedType();
 			this.symbol = query;
@@ -58,7 +58,7 @@ export class SymbolQuery {
 	}
 
 	_visitVariable(variable: VariableSymbol): boolean {
-		return this._visitSymbol(variable as _Symbol) || this._visit(variable.type) || this._visit(variable.arrayCount) || this._visit(variable.value());
+		return this._visitSymbol(variable as BaseSymbol) || this._visit(variable.type) || this._visit(variable.arrayCount) || this._visit(variable.value());
 	}
 
 	_visitFunction(_function: FunctionSymbol): boolean {
@@ -68,7 +68,7 @@ export class SymbolQuery {
 			}
 		}
 
-		return this._visitSymbol(_function as _Symbol) || this._visit(_function.returnType) || this._visit(_function.block);
+		return this._visitSymbol(_function as BaseSymbol) || this._visit(_function.returnType) || this._visit(_function.block);
 	}
 
 	_visitStruct(struct: StructSymbol): boolean {
@@ -78,7 +78,7 @@ export class SymbolQuery {
 			}
 		}
 
-		return this._visitSymbol(struct as _Symbol);
+		return this._visitSymbol(struct as BaseSymbol);
 	}
 
 	_visit(node: Node): boolean {
@@ -161,7 +161,7 @@ export class SymbolQuery {
 
 export class SymbolsQuery {
 	source: Source;
-	symbols: _Symbol[];
+	symbols: BaseSymbol[];
 
 	run(global: Node): void {
 		this._visit(global);
@@ -192,7 +192,7 @@ export class SymbolsQuery {
 		}
 	}
 
-	_collectSymbol(symbol: _Symbol): void {
+	_collectSymbol(symbol: BaseSymbol): void {
 		if (symbol.range !== null && symbol.range.source === this.source) {
 			this.symbols.push(symbol);
 		}
@@ -208,7 +208,7 @@ export class RenameQuery {
 	source: Source;
 	index: number;
 	ranges: Range[];
-	symbol: _Symbol;
+	symbol: BaseSymbol;
 
 	run(global: Node): void {
 		const query = new SymbolQuery(this.source, this.index);
@@ -231,7 +231,7 @@ export class RenameQuery {
 		}
 	}
 
-	_appendRange(range: Range, check: _Symbol): void {
+	_appendRange(range: Range, check: BaseSymbol): void {
 		// Sanity check the range to make sure it contains the target name
 		if (check === this.symbol && range !== null && range.toString() === this.symbol.name) {
 			this.ranges.push(range);
@@ -239,15 +239,15 @@ export class RenameQuery {
 	}
 
 	_visitVariable(variable: VariableSymbol): void {
-		this._appendRange(variable.range, variable as _Symbol);
+		this._appendRange(variable.range, variable as BaseSymbol);
 		this._visit(variable.type);
 		this._visit(variable.arrayCount);
 		this._visit(variable.value());
 	}
 
 	_visitFunction(_function: FunctionSymbol): void {
-		this._appendRange(_function.range, _function as _Symbol);
-		this._appendRange(_function.range, _function.sibling as _Symbol);
+		this._appendRange(_function.range, _function as BaseSymbol);
+		this._appendRange(_function.range, _function.sibling as BaseSymbol);
 		this._visit(_function.returnType);
 		this._visit(_function.block);
 
@@ -257,7 +257,7 @@ export class RenameQuery {
 	}
 
 	_visitStruct(struct: StructSymbol): void {
-		this._appendRange(struct.range, struct as _Symbol);
+		this._appendRange(struct.range, struct as BaseSymbol);
 
 		for (const variable of struct.variables) {
 			this._visitVariable(variable);
@@ -362,7 +362,7 @@ export class CompletionQuery {
 		return completion;
 	}
 
-	_addSymbolCompletion(symbol: _Symbol): void {
+	_addSymbolCompletion(symbol: BaseSymbol): void {
 		const kind = symbol.isFunction() ? 'function' : symbol.isStruct() ? 'struct' : 'variable';
 		const completion = this._addTextualCompletion(kind, symbol.name);
 
@@ -392,7 +392,7 @@ export class CompletionQuery {
 					this._addTextualCompletion('keyword', 'return');
 
 					for (const arg of _function._arguments) {
-						this._addSymbolCompletion(arg as _Symbol);
+						this._addSymbolCompletion(arg as BaseSymbol);
 					}
 
 					this._visit(_function.block, false);
@@ -484,7 +484,7 @@ export class CompletionQuery {
 						}
 					} else if (type.symbol !== null && type.symbol.isStruct()) {
 						for (const variable of type.symbol.asStruct().variables) {
-							this._addSymbolCompletion(variable as _Symbol);
+							this._addSymbolCompletion(variable as BaseSymbol);
 						}
 					}
 
@@ -590,7 +590,7 @@ export class SignatureQuery {
 						for (const overload1 of overloads) {
 							this.signatures.push(
 								new Signature(
-									_tooltipForSymbol(overload1 as _Symbol),
+									_tooltipForSymbol(overload1 as BaseSymbol),
 									overload1._arguments.map<string>((arg: VariableSymbol) => {
 										return _variableTooltipText(arg);
 									}),
@@ -750,7 +750,7 @@ export function constantValueToString(node: Node): string {
 	return null;
 }
 
-export function _tooltipForSymbol(symbol: _Symbol): string {
+export function _tooltipForSymbol(symbol: BaseSymbol): string {
 	if (symbol.isStruct()) {
 		const struct = symbol.asStruct();
 		let text = `${SymbolFlags_toString(struct.flags)}struct ${symbol.name}`;

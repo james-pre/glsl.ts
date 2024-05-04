@@ -22,7 +22,7 @@ export enum SymbolFlags {
 	IMPORTED = 2048,
 }
 
-export class _Symbol {
+export class BaseSymbol {
 	id: number;
 	range: Range;
 	name: string;
@@ -116,7 +116,7 @@ export class _Symbol {
 	}
 }
 
-export class StructSymbol extends _Symbol {
+export class StructSymbol extends BaseSymbol {
 	variables: VariableSymbol[];
 
 	constructor(id: number, range: Range, name: string, scope: Scope) {
@@ -125,7 +125,7 @@ export class StructSymbol extends _Symbol {
 	}
 }
 
-export class FunctionSymbol extends _Symbol {
+export class FunctionSymbol extends BaseSymbol {
 	_arguments: VariableSymbol[];
 	returnType: Node;
 	block: Node;
@@ -164,7 +164,7 @@ export const enum VariableKind {
 	STRUCT,
 }
 
-export class VariableSymbol extends _Symbol {
+export class VariableSymbol extends BaseSymbol {
 	kind: VariableKind;
 	type: Node;
 	node: Node;

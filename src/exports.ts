@@ -9,7 +9,7 @@ import { Color, print, setColor, width, write } from './terminal.js';
 import { Diagnostic, DiagnosticKind, Log } from './log.js';
 import { Range } from './range.js';
 import { Source } from './source.js';
-import { _Symbol } from './symbol.js';
+import { BaseSymbol } from './symbol.js';
 
 export function printUsage(): void {
 	console.log(
@@ -280,7 +280,7 @@ export function compileIDE(input: any, options: any = {}): any {
 
 	const result = typeCheck(log, sources, options.fileAccess && wrapFileAccess(options.fileAccess));
 	return {
-		unusedSymbols: log.unusedSymbols.map<any>((symbol: _Symbol) => {
+		unusedSymbols: log.unusedSymbols.map<any>((symbol: BaseSymbol) => {
 			return {
 				name: symbol.name,
 				range: rangeToJSON(symbol.range),
@@ -294,7 +294,7 @@ export function compileIDE(input: any, options: any = {}): any {
 			};
 		}),
 		tooltipQuery(message: any): any {
-			let ref: _Symbol;
+			let ref: BaseSymbol;
 			const name: string = message.source + '';
 			const line: number = message.line | 0;
 			const column: number = message.column | 0;
@@ -400,7 +400,7 @@ export function compileIDE(input: any, options: any = {}): any {
 					if (result !== null) {
 						const query = new SymbolsQuery(source);
 						query.run(result.global);
-						symbols = query.symbols.map<any>((symbol: _Symbol) => {
+						symbols = query.symbols.map<any>((symbol: BaseSymbol) => {
 							return {
 								name: symbol.name,
 								kind: symbol.isVariable() ? 'variable' : symbol.isFunction() ? 'function' : symbol.isStruct() ? 'struct' : null,

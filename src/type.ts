@@ -1,7 +1,7 @@
-import { StructSymbol, _Symbol } from './symbol.js';
+import { StructSymbol, BaseSymbol } from './symbol.js';
 
 export class Type {
-	symbol: _Symbol;
+	symbol: BaseSymbol;
 	isArrayOf: Type;
 	arrayCount: number;
 	containsArray: boolean;
@@ -220,7 +220,7 @@ export class Type {
 		return this;
 	}
 
-	constructor(symbol: _Symbol, isArrayOf: Type, arrayCount: number) {
+	constructor(symbol: BaseSymbol, isArrayOf: Type, arrayCount: number) {
 		this.symbol = symbol;
 		this.isArrayOf = isArrayOf;
 		this.arrayCount = arrayCount;

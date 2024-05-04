@@ -1,6 +1,6 @@
 import { ExtensionBehavior } from './compiler.js';
 import { Range } from './range.js';
-import { FunctionSymbol, StructSymbol, SymbolFlags, VariableSymbol, _Symbol } from './symbol.js';
+import { FunctionSymbol, StructSymbol, SymbolFlags, VariableSymbol, BaseSymbol } from './symbol.js';
 import { Type } from './type.js';
 
 export enum NodeKind {
@@ -85,7 +85,7 @@ export class Node {
 	kind: NodeKind;
 	range: Range;
 	internalRange: Range;
-	symbol: _Symbol;
+	symbol: BaseSymbol;
 	resolvedType: Type;
 	_literal: number;
 	_text: string;
@@ -210,7 +210,7 @@ export class Node {
 		return this;
 	}
 
-	withSymbol(value: _Symbol): Node {
+	withSymbol(value: BaseSymbol): Node {
 		this.symbol = value;
 		return this;
 	}
@@ -625,7 +625,7 @@ export class Node {
 	}
 
 	static createVariable(symbol: VariableSymbol, value: Node): Node {
-		return new Node(NodeKind.VARIABLE).withSymbol(symbol as _Symbol).appendChild(value);
+		return new Node(NodeKind.VARIABLE).withSymbol(symbol as BaseSymbol).appendChild(value);
 	}
 
 	static createBlock(): Node {
@@ -672,7 +672,7 @@ export class Node {
 	}
 
 	static createFunction(symbol: FunctionSymbol): Node {
-		return new Node(NodeKind.FUNCTION).withSymbol(symbol as _Symbol);
+		return new Node(NodeKind.FUNCTION).withSymbol(symbol as BaseSymbol);
 	}
 
 	static createIf(test: Node, yes: Node, no: Node): Node {
@@ -700,7 +700,7 @@ export class Node {
 		console.assert(block.kind === NodeKind.STRUCT_BLOCK);
 		console.assert(variables === null || variables.kind === NodeKind.VARIABLES);
 		return new Node(NodeKind.STRUCT)
-			.withSymbol(symbol as _Symbol)
+			.withSymbol(symbol as BaseSymbol)
 			.appendChild(block)
 			.appendChild(variables);
 	}
@@ -742,7 +742,7 @@ export class Node {
 		return new Node(NodeKind.HOOK).appendChild(test).appendChild(yes).appendChild(no);
 	}
 
-	static createName(symbol: _Symbol): Node {
+	static createName(symbol: BaseSymbol): Node {
 		return new Node(NodeKind.NAME).withSymbol(symbol);
 	}
 
