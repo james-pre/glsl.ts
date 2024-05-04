@@ -262,7 +262,7 @@ export function _trimMultiLineComment(comment: string, beforeComment: string, in
 	return result;
 }
 
-export function format1(input: string, indent: string, newline: string, trailingNewline: TrailingNewline): string {
+export function format(input: string, indent: string, newline: string, trailingNewline: TrailingNewline): string {
 	const log = new Log();
 	const source = new Source('<stdin>', input);
 	const tokens = tokenize(log, source, TokenPurpose.FORMAT);

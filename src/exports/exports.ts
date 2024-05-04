@@ -1,6 +1,6 @@
 import { API_NAME } from '../core/api.js';
-import { CompilerOptions, OutputFormat, RenameSymbols, compile1, typeCheck } from '../core/compiler.js';
-import { TrailingNewline, format1 } from '../core/formatter.js';
+import { CompilerOptions, OutputFormat, RenameSymbols, compile as _compile, typeCheck } from '../core/compiler.js';
+import { TrailingNewline, format as _format } from '../core/formatter.js';
 import { Completion, CompletionQuery, RenameQuery, Signature, SignatureQuery, SymbolQuery, SymbolsQuery, Tooltip } from '../core/ide.js';
 import { Diagnostic, DiagnosticKind, Log } from '../core/log.js';
 import { Range } from '../core/range.js';
@@ -134,14 +134,15 @@ export function wrapFileAccess(callback: any): (v0: string, v1: string) => Sourc
 	};
 }
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 export function commandLineMain(): void {
 	const args: Array<string> = process.argv.slice(2);
 	const options = new CompilerOptions();
 	const sources: Array<Source> = [];
 	let outputFormat = OutputFormat.JSON;
 	let outputPath: string = null;
-	const fs: any = require('fs');
-	const path: any = require('path');
 	options.fileAccess = (filePath: string, relativeTo: string) => {
 		const name: any = path.resolve(path.dirname(relativeTo), filePath);
 
@@ -201,7 +202,7 @@ export function commandLineMain(): void {
 	}
 
 	const log = new Log();
-	const result = compile1(log, sources, options);
+	const result = _compile(log, sources, options);
 
 	if (result !== null) {
 		if (outputPath !== null) {
@@ -223,9 +224,9 @@ export function main(): void {
 	const root: any = typeof exports !== 'undefined' ? exports : (_this.GLSLX = {});
 
 	// API exports
-	root.compile = compile2;
+	root.compile = compile;
 	root.compileIDE = compileIDE;
-	root.format = format2;
+	root.format = format;
 
 	// Also include a small command-line utility for when this is run in node
 	if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
@@ -267,8 +268,7 @@ export const rangeToJSON: (v0: Range) => any = (range: Range) => {
 };
 
 // Do a non-interactive compile
-export const compile2: (v0: any, v1: any) => any = (input: any, args: any) => {
-	args = args || {};
+export function compile(input: any, args: any = {}): any {
 	const sources = sourcesFromInput(input);
 	const log = new Log();
 	const options = new CompilerOptions();
@@ -290,16 +290,15 @@ export const compile2: (v0: any, v1: any) => any = (input: any, args: any) => {
 		options.fileAccess = wrapFileAccess(args.fileAccess);
 	}
 
-	const result = compile1(log, sources, options);
+	const result = _compile(log, sources, options);
 	return {
 		log: log.toString(),
 		output: result !== null ? result.output(outputFormats.get(args.format) ?? OutputFormat.JSON) : null,
 	};
-};
+}
 
 // Do a compile that can have queries done on it later
-export const compileIDE: (v0: any, v1: any) => any = (input: any, args: any) => {
-	args = args || {};
+export function compileIDE(input: any, args: any = {}): any {
 	const sources = sourcesFromInput(input);
 	const log = new Log();
 	const options = new CompilerOptions();
@@ -309,223 +308,6 @@ export const compileIDE: (v0: any, v1: any) => any = (input: any, args: any) => 
 	}
 
 	const result = typeCheck(log, sources, options);
-	const handleTooltipQuery: (v0: any) => any = (message: any) => {
-		let ref: _Symbol;
-		const name: string = message.source + '';
-		const line: number = message.line | 0;
-		const column: number = message.column | 0;
-		const ignoreDiagnostics: boolean = !!message.ignoreDiagnostics;
-		let range: Range = null;
-		let tooltip: Tooltip = null;
-		let symbol: string = null;
-
-		for (const source of sources) {
-			if (source.name === name) {
-				const index = source.lineColumnToIndex(line, column);
-
-				if (index !== -1) {
-					// Search diagnostics first
-					if (!ignoreDiagnostics && log !== null) {
-						for (const diagnostic of log.diagnostics) {
-							if (diagnostic.range !== null && diagnostic.range.source === source && diagnostic.range.touches(index)) {
-								tooltip = new Tooltip(diagnostic.text, '');
-								range = diagnostic.range;
-								break;
-							}
-						}
-					}
-
-					// Search the syntax tree next
-					if (tooltip === null && result !== null) {
-						const query = new SymbolQuery(source, index);
-						query.run(result.global);
-						tooltip = query.generateTooltip();
-
-						if (tooltip !== null) {
-							range = query.range;
-							symbol = (ref = query.symbol) !== null ? ref.name : null;
-						}
-					}
-				}
-
-				break;
-			}
-		}
-
-		return {
-			tooltip: tooltip !== null ? tooltip.code : null,
-			range: rangeToJSON(range),
-			symbol: symbol,
-			documentation: tooltip !== null ? tooltip.documentation : null,
-		};
-	};
-	const handleDefinitionQuery: (v0: any) => any = (message: any) => {
-		const name: string = message.source + '';
-		const line: number = message.line | 0;
-		const column: number = message.column | 0;
-		let range: Range = null;
-		let definition: Range = null;
-		let symbol: string = null;
-
-		// Allow go-to-definition on #include statements
-		for (const include of result.includes) {
-			if (include.originalRange.source.name === name) {
-				const index = include.originalRange.source.lineColumnToIndex(line, column);
-
-				if (index !== -1 && include.originalRange.touches(index)) {
-					return {
-						definition: rangeToJSON(include.includedRange),
-						range: rangeToJSON(include.originalRange),
-						symbol: include.includedRange.source.name,
-					};
-				}
-			}
-		}
-
-		for (const source of sources) {
-			if (source.name === name) {
-				const index1 = source.lineColumnToIndex(line, column);
-
-				if (index1 !== -1 && result !== null) {
-					const query = new SymbolQuery(source, index1);
-					query.run(result.global);
-
-					if (query.symbol !== null && query.symbol.range !== null && query.symbol.range.source.name !== API_NAME) {
-						definition = query.symbol.range;
-						range = query.range;
-						symbol = query.symbol.name;
-					}
-				}
-
-				break;
-			}
-		}
-
-		return {
-			definition: rangeToJSON(definition),
-			range: rangeToJSON(range),
-			symbol: symbol,
-		};
-	};
-	const handleSymbolsQuery: (v0: any) => any = (message: any) => {
-		const name: string = message.source + '';
-		let symbols: Array<any> = null;
-
-		for (const source of sources) {
-			if (source.name === name) {
-				if (result !== null) {
-					const query = new SymbolsQuery(source);
-					query.run(result.global);
-					symbols = query.symbols.map<any>((symbol: _Symbol) => {
-						return {
-							name: symbol.name,
-							kind: symbol.isVariable() ? 'variable' : symbol.isFunction() ? 'function' : symbol.isStruct() ? 'struct' : null,
-							range: rangeToJSON(symbol.range),
-						};
-					});
-				}
-
-				break;
-			}
-		}
-
-		return {
-			symbols: symbols,
-		};
-	};
-	const handleRenameQuery: (v0: any) => any = (message: any) => {
-		const name: string = message.source + '';
-		const line: number = message.line | 0;
-		const column: number = message.column | 0;
-		let ranges: Array<any> = null;
-		let symbol: string = null;
-
-		for (const source of sources) {
-			if (source.name === name) {
-				const index = source.lineColumnToIndex(line, column);
-
-				if (index !== -1 && result !== null) {
-					const renameQuery = new RenameQuery(source, index);
-					renameQuery.run(result.global);
-
-					if (renameQuery.symbol !== null && renameQuery.symbol.range !== null && renameQuery.symbol.range.source.name !== API_NAME) {
-						ranges = renameQuery.ranges.map<any>(rangeToJSON);
-						symbol = renameQuery.symbol.name;
-					}
-				}
-
-				break;
-			}
-		}
-
-		return {
-			ranges: ranges,
-			symbol: symbol,
-		};
-	};
-	const handleCompletionQuery: (v0: any) => any = (message: any) => {
-		const name: string = message.source + '';
-		const line: number = message.line | 0;
-		const column: number = message.column | 0;
-		let completions: Array<any> = [];
-
-		for (const source of sources) {
-			if (source.name === name) {
-				const index = source.lineColumnToIndex(line, column);
-
-				if (index !== -1 && result !== null) {
-					const completionQuery = new CompletionQuery(source, index);
-					completionQuery.run(result.global);
-					completions = completionQuery.completions.map<any>((completion: Completion) => {
-						return {
-							kind: completion.kind,
-							name: completion.name,
-							detail: completion.detail,
-							documentation: completion.documentation,
-						};
-					});
-				}
-			}
-		}
-
-		return {
-			completions: completions,
-		};
-	};
-	const handleSignatureQuery: (v0: any) => any = (message: any) => {
-		const name: string = message.source + '';
-		const line: number = message.line | 0;
-		const column: number = message.column | 0;
-		let signatures: Array<any> = [];
-		let activeArgument = -1;
-		let activeSignature = -1;
-
-		for (const source of sources) {
-			if (source.name === name) {
-				const index = source.lineColumnToIndex(line, column);
-
-				if (index !== -1 && result !== null) {
-					const signatureQuery = new SignatureQuery(source, index);
-					signatureQuery.run(result.global);
-					activeArgument = signatureQuery.activeArgument;
-					activeSignature = signatureQuery.activeSignature;
-					signatures = signatureQuery.signatures.map<any>((signature: Signature) => {
-						return {
-							text: signature.text,
-							arguments: signature._arguments,
-							documentation: signature.documentation,
-						};
-					});
-				}
-			}
-		}
-
-		return {
-			signatures: signatures,
-			activeArgument: activeArgument,
-			activeSignature: activeSignature,
-		};
-	};
 	return {
 		unusedSymbols: log.unusedSymbols.map<any>((symbol: _Symbol) => {
 			return {
@@ -540,17 +322,228 @@ export const compileIDE: (v0: any, v1: any) => any = (input: any, args: any) => 
 				text: diagnostic.text,
 			};
 		}),
-		tooltipQuery: handleTooltipQuery,
-		definitionQuery: handleDefinitionQuery,
-		symbolsQuery: handleSymbolsQuery,
-		renameQuery: handleRenameQuery,
-		completionQuery: handleCompletionQuery,
-		signatureQuery: handleSignatureQuery,
+		tooltipQuery(message: any): any {
+			let ref: _Symbol;
+			const name: string = message.source + '';
+			const line: number = message.line | 0;
+			const column: number = message.column | 0;
+			const ignoreDiagnostics: boolean = !!message.ignoreDiagnostics;
+			let range: Range = null;
+			let tooltip: Tooltip = null;
+			let symbol: string = null;
+
+			for (const source of sources) {
+				if (source.name === name) {
+					const index = source.lineColumnToIndex(line, column);
+
+					if (index !== -1) {
+						// Search diagnostics first
+						if (!ignoreDiagnostics && log !== null) {
+							for (const diagnostic of log.diagnostics) {
+								if (diagnostic.range !== null && diagnostic.range.source === source && diagnostic.range.touches(index)) {
+									tooltip = new Tooltip(diagnostic.text, '');
+									range = diagnostic.range;
+									break;
+								}
+							}
+						}
+
+						// Search the syntax tree next
+						if (tooltip === null && result !== null) {
+							const query = new SymbolQuery(source, index);
+							query.run(result.global);
+							tooltip = query.generateTooltip();
+
+							if (tooltip !== null) {
+								range = query.range;
+								symbol = (ref = query.symbol) !== null ? ref.name : null;
+							}
+						}
+					}
+
+					break;
+				}
+			}
+
+			return {
+				tooltip: tooltip !== null ? tooltip.code : null,
+				range: rangeToJSON(range),
+				symbol: symbol,
+				documentation: tooltip !== null ? tooltip.documentation : null,
+			};
+		},
+		definitionQuery(message: any): any {
+			const name: string = message.source + '';
+			const line: number = message.line | 0;
+			const column: number = message.column | 0;
+			let range: Range = null;
+			let definition: Range = null;
+			let symbol: string = null;
+
+			// Allow go-to-definition on #include statements
+			for (const include of result.includes) {
+				if (include.originalRange.source.name === name) {
+					const index = include.originalRange.source.lineColumnToIndex(line, column);
+
+					if (index !== -1 && include.originalRange.touches(index)) {
+						return {
+							definition: rangeToJSON(include.includedRange),
+							range: rangeToJSON(include.originalRange),
+							symbol: include.includedRange.source.name,
+						};
+					}
+				}
+			}
+
+			for (const source of sources) {
+				if (source.name === name) {
+					const index1 = source.lineColumnToIndex(line, column);
+
+					if (index1 !== -1 && result !== null) {
+						const query = new SymbolQuery(source, index1);
+						query.run(result.global);
+
+						if (query.symbol !== null && query.symbol.range !== null && query.symbol.range.source.name !== API_NAME) {
+							definition = query.symbol.range;
+							range = query.range;
+							symbol = query.symbol.name;
+						}
+					}
+
+					break;
+				}
+			}
+
+			return {
+				definition: rangeToJSON(definition),
+				range: rangeToJSON(range),
+				symbol: symbol,
+			};
+		},
+		symbolsQuery(message: any) {
+			const name: string = message.source + '';
+			let symbols: Array<any> = null;
+
+			for (const source of sources) {
+				if (source.name === name) {
+					if (result !== null) {
+						const query = new SymbolsQuery(source);
+						query.run(result.global);
+						symbols = query.symbols.map<any>((symbol: _Symbol) => {
+							return {
+								name: symbol.name,
+								kind: symbol.isVariable() ? 'variable' : symbol.isFunction() ? 'function' : symbol.isStruct() ? 'struct' : null,
+								range: rangeToJSON(symbol.range),
+							};
+						});
+					}
+
+					break;
+				}
+			}
+
+			return {
+				symbols: symbols,
+			};
+		},
+		renameQuery(message: any) {
+			const name: string = message.source + '';
+			const line: number = message.line | 0;
+			const column: number = message.column | 0;
+			let ranges: Array<any> = null;
+			let symbol: string = null;
+
+			for (const source of sources) {
+				if (source.name === name) {
+					const index = source.lineColumnToIndex(line, column);
+
+					if (index !== -1 && result !== null) {
+						const renameQuery = new RenameQuery(source, index);
+						renameQuery.run(result.global);
+
+						if (renameQuery.symbol !== null && renameQuery.symbol.range !== null && renameQuery.symbol.range.source.name !== API_NAME) {
+							ranges = renameQuery.ranges.map<any>(rangeToJSON);
+							symbol = renameQuery.symbol.name;
+						}
+					}
+
+					break;
+				}
+			}
+
+			return {
+				ranges: ranges,
+				symbol: symbol,
+			};
+		},
+		completionQuery(message: any) {
+			const name: string = message.source + '';
+			const line: number = message.line | 0;
+			const column: number = message.column | 0;
+			let completions: Array<any> = [];
+
+			for (const source of sources) {
+				if (source.name === name) {
+					const index = source.lineColumnToIndex(line, column);
+
+					if (index !== -1 && result !== null) {
+						const completionQuery = new CompletionQuery(source, index);
+						completionQuery.run(result.global);
+						completions = completionQuery.completions.map<any>((completion: Completion) => {
+							return {
+								kind: completion.kind,
+								name: completion.name,
+								detail: completion.detail,
+								documentation: completion.documentation,
+							};
+						});
+					}
+				}
+			}
+
+			return {
+				completions: completions,
+			};
+		},
+		signatureQuery(message: any) {
+			const name: string = message.source + '';
+			const line: number = message.line | 0;
+			const column: number = message.column | 0;
+			let signatures: Array<any> = [];
+			let activeArgument = -1;
+			let activeSignature = -1;
+
+			for (const source of sources) {
+				if (source.name === name) {
+					const index = source.lineColumnToIndex(line, column);
+
+					if (index !== -1 && result !== null) {
+						const signatureQuery = new SignatureQuery(source, index);
+						signatureQuery.run(result.global);
+						activeArgument = signatureQuery.activeArgument;
+						activeSignature = signatureQuery.activeSignature;
+						signatures = signatureQuery.signatures.map<any>((signature: Signature) => {
+							return {
+								text: signature.text,
+								arguments: signature._arguments,
+								documentation: signature.documentation,
+							};
+						});
+					}
+				}
+			}
+
+			return {
+				signatures,
+				activeArgument,
+				activeSignature,
+			};
+		},
 	};
-};
+}
 
 // Source code formatting
-export const format2: (v0: any, v1: any) => string = (input: any, options: any) => {
+export function format(input: any, options: any): string {
 	options = options || {};
 	const indent = 'indent' in options ? options.indent?.toString() : '  ';
 	const newline = 'newline' in options ? options.newline?.toString() : '\n';
@@ -571,5 +564,5 @@ export const format2: (v0: any, v1: any) => string = (input: any, options: any) 
 		}
 	}
 
-	return format1(input?.toString(), indent, newline, trailingNewline);
-};
+	return _format(input?.toString(), indent, newline, trailingNewline);
+}

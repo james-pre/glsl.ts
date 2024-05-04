@@ -254,7 +254,7 @@ export function typeCheck(log: Log, sources: Array<Source>, options: CompilerOpt
 	return new TypeCheckResult(global, includes);
 }
 
-export function compile1(log: Log, sources: Array<Source>, options: CompilerOptions): CompilerResult {
+export function compile(log: Log, sources: Array<Source>, options: CompilerOptions): CompilerResult {
 	if (log.hasErrors()) {
 		return null;
 	}
