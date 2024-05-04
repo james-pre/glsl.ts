@@ -1,5 +1,5 @@
 {
-	"name": "tcsl",
+	"name": "glsl.ts",
 	"version": "0.7.0",
 	"description": "Typescript Compatible Shader Language",
 	"main": "dist/index.js",
@@ -10,15 +10,15 @@
 		"storage"
 	],
 	"type": "module",
-	"homepage": "https://github.com/dr-vortex/tcsl",
+	"homepage": "https://github.com/dr-vortex/glsl.ts",
 	"author": "James P. <jp@drvortex.dev> (https://drvortex.dev)",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dr-vortex/tcsl.git"
+		"url": "git+https://github.com/dr-vortex/glsl.ts.git"
 	},
 	"bugs": {
-		"url": "https://github.com/dr-vortex/tcsl/issues"
+		"url": "https://github.com/dr-vortex/glsl.ts/issues"
 	},
 	"engines": {
 		"node": ">= 18"
@@ -39,7 +39,7 @@
 		"format:check": "prettier --check .",
 		"lint": "eslint src tests && tsc -p tsconfig.json --noEmit",
 		"build": "tsc -p tsconfig.json",
-		"build:docs": "typedoc --out docs --name TCSL src/index.ts",
+		"build:docs": "typedoc --out docs --name GLSL.TS src/index.ts",
 		"prepublishOnly": "npm run build"
 	},
 	"devDependencies": {
