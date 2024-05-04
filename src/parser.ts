@@ -633,7 +633,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 
 	context.pushScope(symbol.scope);
 
-	while (!context.peek(TokenKind.RIGHT_BRACE) && !context.peek(TokenKind.END_OF_FILE)) {
+	while (!context.peek(TokenKind.RIGHT_BRACE) && !context.peek(TokenKind.EOF)) {
 		const statement = parseStatement(context, VariableKind.STRUCT);
 
 		if (!statement) {
@@ -947,7 +947,7 @@ export function parseInclude(context: ParserContext, parent: Node): boolean {
 	const nestedContext = new ParserContext(context.log, tokens, context.compilationData, context.resolver, context.processedIncludes);
 	nestedContext.pushScope(context.scope());
 
-	if (!parseStatements(nestedContext, parent, VariableKind.GLOBAL) || !nestedContext.expect(TokenKind.END_OF_FILE)) {
+	if (!parseStatements(nestedContext, parent, VariableKind.GLOBAL) || !nestedContext.expect(TokenKind.EOF)) {
 		return false;
 	}
 
@@ -1413,7 +1413,7 @@ export function tryToDefineUniquelyInScope(context: ParserContext, symbol: BaseS
 }
 
 export function parseStatements(context: ParserContext, parent: Node, mode: VariableKind): boolean {
-	while (!context.peek(TokenKind.END_OF_FILE) && !context.peek(TokenKind.RIGHT_BRACE)) {
+	while (!context.peek(TokenKind.EOF) && !context.peek(TokenKind.RIGHT_BRACE)) {
 		const includeRange = context.current().range;
 
 		if (context.eat(TokenKind.INCLUDE)) {
@@ -1462,7 +1462,7 @@ export function parse(log: Log, tokens: Token[], global: Node, data: CompilerDat
 	context.pushScope(scope);
 
 	if (parseStatements(context, global, VariableKind.GLOBAL)) {
-		context.expect(TokenKind.END_OF_FILE);
+		context.expect(TokenKind.EOF);
 	}
 
 	return new ParseResult(context.includes);

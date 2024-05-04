@@ -120,7 +120,7 @@ export enum TokenKind {
 	STRING_LITERAL,
 
 	// This is always at the end of the token stream
-	END_OF_FILE,
+	EOF,
 }
 
 export class Token {
@@ -158,9 +158,9 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token
 
 			// Identifier
 			if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95) {
-				const keyword = keywords.get(part) ?? TokenKind.END_OF_FILE;
+				const keyword = keywords.get(part) ?? TokenKind.EOF;
 
-				if (keyword !== TokenKind.END_OF_FILE) {
+				if (keyword !== TokenKind.EOF) {
 					tokens.push(new Token(range, keyword, comments));
 				} else if (reservedWords.has(part)) {
 					log.syntaxErrorReservedWord(range);
@@ -197,9 +197,9 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token
 
 			// Operator
 			else {
-				let kind1 = operators.get(part) ?? TokenKind.END_OF_FILE;
+				let kind1 = operators.get(part) ?? TokenKind.EOF;
 
-				if (kind1 === TokenKind.END_OF_FILE) {
+				if (kind1 === TokenKind.EOF) {
 					if (part.startsWith('//')) {
 						if (purpose === TokenPurpose.FORMAT) {
 							kind1 = TokenKind.SINGLE_LINE_COMMENT;
@@ -215,7 +215,7 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token
 					}
 				}
 
-				if (kind1 !== TokenKind.END_OF_FILE) {
+				if (kind1 !== TokenKind.EOF) {
 					tokens.push(new Token(range, kind1, comments));
 				}
 			}
@@ -233,7 +233,7 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token
 		start = end;
 	}
 
-	tokens.push(new Token(new Range(source, start, start), TokenKind.END_OF_FILE, comments));
+	tokens.push(new Token(new Range(source, start, start), TokenKind.EOF, comments));
 	return tokens;
 }
 

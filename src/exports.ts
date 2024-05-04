@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { pick } from 'utilium';
 import { API_NAME } from './api.js';
 import { compile as _compile, CompilerOptions, FileAccess, isOutputFormat, isRenameSymbols, OutputFormat, RenameSymbols, typeCheck } from './compiler.js';
-import { format as _format, TrailingNewline } from './formatter.js';
+import { format as _format, isTrailingNewline, TrailingNewline } from './formatter.js';
 import { Completion, CompletionQuery, RenameQuery, Signature, SignatureQuery, SymbolQuery, SymbolsQuery, Tooltip } from './ide.js';
 import { Color, print, setColor, width, write } from './terminal.js';
 import { Diagnostic, DiagnosticKind, Log } from './log.js';
@@ -517,21 +517,16 @@ export function format(input: any, options: any): string {
 	options = options || {};
 	const indent = 'indent' in options ? options.indent?.toString() : '  ';
 	const newline = 'newline' in options ? options.newline?.toString() : '\n';
-	let trailingNewline = TrailingNewline.INSERT;
+	let trailingNewline: TrailingNewline = 'insert';
 
 	if ('trailingNewline' in options) {
 		const value = options.trailingNewline?.toString();
-		const value1 = value;
 
-		if (value1 === 'preserve') {
-			trailingNewline = TrailingNewline.PRESERVE;
-		} else if (value1 === 'remove') {
-			trailingNewline = TrailingNewline.REMOVE;
-		} else if (value1 === 'insert') {
-			trailingNewline = TrailingNewline.INSERT;
-		} else {
+		if (!isTrailingNewline(value)) {
 			throw new Error(`Invalid "trailingNewline" value: ${value}`);
 		}
+
+		trailingNewline = value;
 	}
 
 	return _format(input?.toString(), indent, newline, trailingNewline);
