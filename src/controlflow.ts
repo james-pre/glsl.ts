@@ -1,8 +1,8 @@
 import { Node, NodeKind, NodeKind_isLoop } from './node.js';
 
 export class ControlFlowAnalyzer {
-	_isLoopBreakTarget: boolean[];
-	_isControlFlowLive: boolean[];
+	_isLoopBreakTarget: boolean[] = [];
+	_isControlFlowLive: boolean[] = [];
 
 	pushBlock(node: Node): void {
 		const parent = node.parent();
@@ -11,7 +11,7 @@ export class ControlFlowAnalyzer {
 		this._isControlFlowLive.push(this._isControlFlowLive.length === 0 || this._isControlFlowLive.pop());
 
 		// Push loop info
-		if (parent !== null && NodeKind_isLoop(parent.kind)) {
+		if (parent && NodeKind_isLoop(parent.kind)) {
 			this._isLoopBreakTarget.push(false);
 		}
 	}
@@ -82,10 +82,5 @@ export class ControlFlowAnalyzer {
 				break;
 			}
 		}
-	}
-
-	constructor() {
-		this._isLoopBreakTarget = [];
-		this._isControlFlowLive = [];
 	}
 }
