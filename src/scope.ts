@@ -9,10 +9,12 @@ export const enum ScopeKind {
 }
 
 export class Scope {
-	kind: ScopeKind;
-	parent: Scope;
-	symbols: Map<string, BaseSymbol>;
+	public symbols: Map<string, BaseSymbol> = new Map();
 
+	constructor(
+		public kind: ScopeKind,
+		public parent?: Scope
+	) {}
 	define(symbol: BaseSymbol): void {
 		console.assert(!this.symbols.has(symbol.name));
 		this.symbols.set(symbol.name, symbol);
@@ -25,22 +27,14 @@ export class Scope {
 	}
 
 	find(name: string): BaseSymbol {
-		const symbol = this.symbols.get(name) ?? null;
+		const symbol = this.symbols.get(name);
 
-		if (symbol !== null) {
+		if (symbol) {
 			return symbol;
 		}
 
-		if (this.parent !== null) {
+		if (this.parent) {
 			return this.parent.find(name);
 		}
-
-		return null;
-	}
-
-	constructor(kind: ScopeKind, parent: Scope) {
-		this.kind = kind;
-		this.parent = parent;
-		this.symbols = new Map();
 	}
 }

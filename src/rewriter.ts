@@ -68,7 +68,7 @@ export class Rewriter {
 			case NodeKind.FUNCTION: {
 				const _function = node.symbol.asFunction();
 
-				if (_function.block !== null) {
+				if (_function.block) {
 					Rewriter._addBracesToAvoidDanglingElseIssues(_function.block);
 				}
 				break;
@@ -79,7 +79,7 @@ export class Rewriter {
 			}
 
 			default: {
-				for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+				for (let child = node.firstChild(); child; child = child.nextSibling()) {
 					Rewriter._addBracesToAvoidDanglingElseIssues(child);
 				}
 
@@ -95,7 +95,7 @@ export class Rewriter {
 	}
 
 	_scanSymbols(node: Node): void {
-		for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			this._scanSymbols(child);
 		}
 
@@ -103,7 +103,7 @@ export class Rewriter {
 			case NodeKind.VARIABLE: {
 				const variable = node.symbol.asVariable();
 
-				if (variable.value() !== null) {
+				if (variable.value()) {
 					this._scanSymbols(variable.value());
 				}
 
@@ -119,7 +119,7 @@ export class Rewriter {
 				const _function = node.symbol.asFunction();
 				this._useCounts.set(_function.id, 0);
 
-				if (_function.block !== null) {
+				if (_function.block) {
 					this._scanSymbols(_function.block);
 				}
 				break;
@@ -146,7 +146,7 @@ export class Rewriter {
 				// Track referenced extensions
 				const name = node.symbol.requiredExtension;
 
-				if (name !== null) {
+				if (name) {
 					this._referencedExtensions.set(name, 0);
 				}
 				break;
@@ -155,7 +155,7 @@ export class Rewriter {
 	}
 
 	_trimSymbols(node: Node): void {
-		for (let child = node.firstChild(), next: Node = null; child !== null; child = next) {
+		for (let child = node.firstChild(), next: Node = null; child; child = next) {
 			next = child.nextSibling();
 			this._trimSymbols(child);
 		}
@@ -165,12 +165,12 @@ export class Rewriter {
 				if (
 					this._hasLiteralConstantValue(node.symbol) ||
 					this._isNonMutatedLiteral(node.symbol) ||
-					(this._isUnused(node.symbol) && (node.variableInitializer() === null || node.variableInitializer().hasNoSideEffects() || node.symbol.constantValue !== null))
+					(this._isUnused(node.symbol) && (node.variableInitializer() === null || node.variableInitializer().hasNoSideEffects() || node.symbol.constantValue))
 				) {
 					node.remove();
 					this._reportCodeChange();
 				} else {
-					if (node.variableInitializer() !== null) {
+					if (node.variableInitializer()) {
 						this._trimSymbols(node.variableInitializer());
 					}
 
@@ -179,10 +179,10 @@ export class Rewriter {
 					// inside it are still replaced.
 					const arrayCount = node.symbol.asVariable().arrayCount;
 
-					if (arrayCount !== null && arrayCount.kind === NodeKind.NAME) {
+					if (arrayCount && arrayCount.kind === NodeKind.NAME) {
 						const clone = this._literalConstantForSymbol(arrayCount.symbol);
 
-						if (clone !== null) {
+						if (clone) {
 							node.symbol.asVariable().arrayCount = clone;
 							this._reportCodeChange();
 						}
@@ -197,7 +197,7 @@ export class Rewriter {
 				if (this._isUnused(_function as BaseSymbol) && !_function.isExported()) {
 					node.remove();
 					this._reportCodeChange();
-				} else if (_function.block !== null) {
+				} else if (_function.block) {
 					this._trimSymbols(_function.block);
 				}
 				break;
@@ -226,7 +226,7 @@ export class Rewriter {
 			case NodeKind.NAME: {
 				const clone1 = this._literalConstantForSymbol(node.symbol);
 
-				if (clone1 !== null) {
+				if (clone1) {
 					node.replaceWith(clone1);
 					this._reportCodeChange();
 				}
@@ -244,11 +244,11 @@ export class Rewriter {
 			return symbol.asVariable().value().clone();
 		}
 
-		return null;
+		return;
 	}
 
 	_trimUnreferencedExtensions(node: Node, data: CompilerData): void {
-		for (let child = node.firstChild(), next: Node = null; child !== null; child = next) {
+		for (let child = node.firstChild(), next: Node = null; child; child = next) {
 			next = child.nextSibling();
 
 			if (
@@ -264,20 +264,20 @@ export class Rewriter {
 	_isUnused(symbol: BaseSymbol): boolean {
 		return (
 			(this._useCounts.get(symbol.id) ?? -1) === 0 &&
-			((!symbol.isFunction() || symbol.asFunction().sibling === null || this._useCounts.get(symbol.asFunction().sibling.id)) ?? -1) === 0
+			((!symbol.isFunction() || symbol.asFunction()!.sibling || this._useCounts.get(symbol.asFunction().sibling.id)) ?? -1) === 0
 		);
 	}
 
 	_hasLiteralConstantValue(symbol: BaseSymbol): boolean {
-		return symbol.constantValue !== null && NodeKind_isLiteral(symbol.constantValue.kind);
+		return symbol.constantValue && NodeKind_isLiteral(symbol.constantValue.kind);
 	}
 
 	_isNonMutatedLiteral(symbol: BaseSymbol): boolean {
-		return (this._mutationCounts.get(symbol.id) ?? -1) === 0 && symbol.asVariable().value() !== null && NodeKind_isLiteral(symbol.asVariable().value().kind);
+		return (this._mutationCounts.get(symbol.id) ?? -1) === 0 && symbol.asVariable().value() && NodeKind_isLiteral(symbol.asVariable().value().kind);
 	}
 
 	_compact(node: Node): void {
-		for (let child = node.firstChild(), next: Node = null; child !== null; child = next) {
+		for (let child = node.firstChild(), next: Node = null; child; child = next) {
 			next = child.nextSibling();
 			this._compact(child);
 		}
@@ -286,7 +286,7 @@ export class Rewriter {
 			case NodeKind.VARIABLE: {
 				const variable = node.symbol.asVariable();
 
-				if (variable.value() !== null) {
+				if (variable.value()) {
 					this._compact(variable.value());
 				}
 				break;
@@ -294,13 +294,13 @@ export class Rewriter {
 
 			case NodeKind.BLOCK: {
 				// Remove everything after a jump
-				for (let child1 = node.firstChild(); child1 !== null; child1 = child1.nextSibling()) {
+				for (let child1 = node.firstChild(); child1; child1 = child1.nextSibling()) {
 					if (!NodeKind_isJump(child1.kind)) {
 						continue;
 					}
 
-					if (child1.nextSibling() !== null) {
-						while (child1.nextSibling() !== null) {
+					if (child1.nextSibling()) {
+						while (child1.nextSibling()) {
 							child1.nextSibling().remove();
 						}
 
@@ -309,10 +309,10 @@ export class Rewriter {
 				}
 
 				// Collapse this block into the parent block if possible, being careful about scope
-				if (node.parent() !== null && node.parent().kind === NodeKind.BLOCK) {
+				if (node.parent() && node.parent().kind === NodeKind.BLOCK) {
 					let mayNeedScope = false;
 
-					for (let child2 = node.firstChild(); child2 !== null; child2 = child2.nextSibling()) {
+					for (let child2 = node.firstChild(); child2; child2 = child2.nextSibling()) {
 						if (child2.kind === NodeKind.VARIABLES) {
 							mayNeedScope = true;
 						}
@@ -340,7 +340,7 @@ export class Rewriter {
 					// compacting opportunities in the future)
 					const previous = node.previousSibling();
 
-					if (previous !== null && previous.kind === NodeKind.EXPRESSION) {
+					if (previous && previous.kind === NodeKind.EXPRESSION) {
 						const value = node.expressionValue().remove();
 						node.appendChild(Node.createSequence().appendChild(previous.remove().expressionValue().remove()).appendChild(value));
 						this._reportCodeChange();
@@ -367,14 +367,14 @@ export class Rewriter {
 				this._compactBlockStatement(node.forBody());
 
 				// Tuck the previous expression inside the setup location if empty
-				if (node.forSetup() === null && node.previousSibling() !== null && node.previousSibling().kind === NodeKind.EXPRESSION) {
+				if (node.forSetup() === null && node.previousSibling() && node.previousSibling().kind === NodeKind.EXPRESSION) {
 					node.firstChild().replaceWith(node.previousSibling().expressionValue().remove());
 					node.previousSibling().remove();
 					this._reportCodeChange();
 				}
 
 				// No need to keep "true" around
-				if (node.forTest() !== null && node.forTest().isTrue()) {
+				if (node.forTest() && node.forTest().isTrue()) {
 					node.forTest().replaceWith(Node.createSequence());
 					this._reportCodeChange();
 				}
@@ -395,7 +395,7 @@ export class Rewriter {
 			case NodeKind.FUNCTION: {
 				const _function = node.symbol.asFunction();
 
-				if (_function.block !== null) {
+				if (_function.block) {
 					this._compact(_function.block);
 				}
 				break;
@@ -404,7 +404,7 @@ export class Rewriter {
 			case NodeKind.IF: {
 				this._compactBlockStatement(node.ifTrue());
 
-				if (node.ifFalse() !== null) {
+				if (node.ifFalse()) {
 					this._compactBlockStatement(node.ifFalse());
 				}
 
@@ -417,7 +417,7 @@ export class Rewriter {
 
 				// Special-case "false"
 				if (node.ifTest().isFalse()) {
-					if (node.ifFalse() !== null) {
+					if (node.ifFalse()) {
 						node.replaceWith(node.ifFalse().remove());
 					} else {
 						node.remove();
@@ -428,11 +428,11 @@ export class Rewriter {
 				}
 
 				// Turn if-else statements into a single return statement
-				if (node.ifFalse() !== null && node.ifTrue().kind === NodeKind.RETURN && node.ifFalse().kind === NodeKind.RETURN) {
+				if (node.ifFalse() && node.ifTrue().kind === NodeKind.RETURN && node.ifFalse().kind === NodeKind.RETURN) {
 					const yes = node.ifTrue().returnValue();
 					const no = node.ifFalse().returnValue();
 
-					if (yes !== null && no !== null) {
+					if (yes && no) {
 						node.replaceWith(Node.createReturn(Node.createHook(node.ifTest().remove(), yes.remove(), no.remove()).withType(yes.resolvedType)));
 						this._reportCodeChange();
 						return;
@@ -440,7 +440,7 @@ export class Rewriter {
 				}
 
 				// Turn if-else statements into shorter conditional expressions when possible
-				if (node.ifFalse() !== null && node.ifTrue().kind === NodeKind.EXPRESSION && node.ifFalse().kind === NodeKind.EXPRESSION) {
+				if (node.ifFalse() && node.ifTrue().kind === NodeKind.EXPRESSION && node.ifFalse().kind === NodeKind.EXPRESSION) {
 					const yes1 = node.ifTrue().expressionValue();
 					const no1 = node.ifFalse().expressionValue();
 
@@ -480,7 +480,7 @@ export class Rewriter {
 
 				// Remove an empty true branch
 				if (node.ifTrue().isEmptyBlock()) {
-					if (node.ifFalse() !== null) {
+					if (node.ifFalse()) {
 						node.ifTest().invertBooleanCondition();
 						node.ifTrue().remove();
 					} else {
@@ -492,7 +492,7 @@ export class Rewriter {
 				}
 
 				// Remove an empty false branch
-				if (node.ifFalse() !== null && node.ifFalse().isEmptyBlock()) {
+				if (node.ifFalse() && node.ifFalse().isEmptyBlock()) {
 					node.ifFalse().remove();
 					this._reportCodeChange();
 					return;
@@ -504,11 +504,11 @@ export class Rewriter {
 				// Merge with previous if statements if possible
 				let previous1 = node.previousSibling();
 
-				while (previous1 !== null && previous1.kind === NodeKind.IF && previous1.ifFalse() === null && previous1.ifTrue().kind === NodeKind.RETURN) {
+				while (previous1 && previous1.kind === NodeKind.IF && previous1.ifFalse() === null && previous1.ifTrue().kind === NodeKind.RETURN) {
 					const yes3 = previous1.ifTrue().returnValue();
 					const no2 = node.returnValue();
 
-					if (yes3 === null || no2 === null) {
+					if (!yes3 || !no2) {
 						break;
 					}
 
@@ -521,7 +521,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.VARIABLES: {
-				for (let previous2 = node.previousSibling(); previous2 !== null; previous2 = previous2.previousSibling()) {
+				for (let previous2 = node.previousSibling(); previous2; previous2 = previous2.previousSibling()) {
 					if (previous2.kind !== NodeKind.VARIABLES) {
 						break;
 					}
@@ -538,10 +538,10 @@ export class Rewriter {
 					}
 
 					// Only skip over variable blocks if all variables have constant initializers
-					for (let child3 = previous2.variablesType().nextSibling(); child3 !== null; child3 = child3.nextSibling()) {
+					for (let child3 = previous2.variablesType().nextSibling(); child3; child3 = child3.nextSibling()) {
 						const initializer = child3.variableInitializer();
 
-						if (initializer !== null && !NodeKind_isLiteral(initializer.kind)) {
+						if (initializer && !NodeKind_isLiteral(initializer.kind)) {
 							return;
 						}
 					}
@@ -704,7 +704,7 @@ export class Rewriter {
 					if (type === Type.INT) {
 						const child5 = target.nextSibling();
 
-						if (child5 !== null && child5.nextSibling() === null && child5.kind === NodeKind.INT) {
+						if (child5 && child5.nextSibling() === null && child5.kind === NodeKind.INT) {
 							node.become(child5.remove());
 							this._reportCodeChange();
 						}
@@ -714,14 +714,14 @@ export class Rewriter {
 					else if (type === Type.FLOAT) {
 						const child6 = target.nextSibling();
 
-						if (child6 !== null && child6.nextSibling() === null && child6.kind === NodeKind.INT) {
+						if (child6 && child6.nextSibling() === null && child6.kind === NodeKind.INT) {
 							this._changeToFloat(node, child6.asInt());
 						}
 					}
 
 					// "vec2(1.0, 2.0)" => "vec2(1, 2)"
 					else if (type.componentType() === Type.FLOAT) {
-						for (let child7 = target.nextSibling(); child7 !== null; child7 = child7.nextSibling()) {
+						for (let child7 = target.nextSibling(); child7; child7 = child7.nextSibling()) {
 							if (child7.kind === NodeKind.FLOAT) {
 								const floatValue = child7.asFloat();
 								const intValue = floatValue | 0;

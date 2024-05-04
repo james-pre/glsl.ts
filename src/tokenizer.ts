@@ -204,13 +204,13 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Token
 						if (purpose === TokenPurpose.FORMAT) {
 							kind1 = TokenKind.SINGLE_LINE_COMMENT;
 						} else {
-							(comments !== null ? comments : (comments = [])).push(range);
+							(comments ? comments : (comments = [])).push(range);
 						}
 					} else if (part.startsWith('/*')) {
 						if (purpose === TokenPurpose.FORMAT) {
 							kind1 = TokenKind.MULTI_LINE_COMMENT;
 						} else {
-							(comments !== null ? comments : (comments = [])).push(range);
+							(comments ? comments : (comments = [])).push(range);
 						}
 					}
 				}

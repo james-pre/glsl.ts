@@ -28,12 +28,12 @@ export class ControlFlowAnalyzer {
 
 		// Pop loop info
 		if (
-			parent !== null &&
+			parent &&
 			NodeKind_isLoop(parent.kind) &&
 			!this._isLoopBreakTarget.pop() &&
 			((parent.kind === NodeKind.WHILE && parent.whileTest().isTrue()) ||
 				(parent.kind === NodeKind.DO_WHILE && parent.doWhileTest().isTrue()) ||
-				(parent.kind === NodeKind.FOR && (parent.forTest() === null || parent.forTest().isTrue())))
+				(parent.kind === NodeKind.FOR && (!parent.forTest() || parent.forTest().isTrue())))
 		) {
 			this._isControlFlowLive[this._isControlFlowLive.length - 1] = false;
 		}
@@ -70,11 +70,11 @@ export class ControlFlowAnalyzer {
 					if (!trueValue.hasControlFlowAtEnd) {
 						this._isControlFlowLive[this._isControlFlowLive.length - 1] = false;
 					}
-				} else if (test.isFalse() && falseValue !== null) {
+				} else if (test.isFalse() && falseValue) {
 					if (!falseValue.hasControlFlowAtEnd) {
 						this._isControlFlowLive[this._isControlFlowLive.length - 1] = false;
 					}
-				} else if (trueValue !== null && falseValue !== null) {
+				} else if (trueValue && falseValue) {
 					if (!trueValue.hasControlFlowAtEnd && !falseValue.hasControlFlowAtEnd) {
 						this._isControlFlowLive[this._isControlFlowLive.length - 1] = false;
 					}

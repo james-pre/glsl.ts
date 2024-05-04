@@ -76,7 +76,7 @@ export class CompilerResult {
 		}
 
 		if (!this.shaders) {
-			return null;
+			return;
 		}
 
 		let code = '';
@@ -118,7 +118,7 @@ export interface TypeCheckResult {
 
 export function typeCheck(log: Log, sources: Source[], fileAccess: FileAccess): TypeCheckResult {
 	if (log.hasErrors()) {
-		return null;
+		return;
 	}
 
 	// Generate tokens once
@@ -129,7 +129,7 @@ export function typeCheck(log: Log, sources: Source[], fileAccess: FileAccess): 
 	}
 
 	const global = Node.createGlobal();
-	const scope = new Scope(ScopeKind.GLOBAL, null);
+	const scope = new Scope(ScopeKind.GLOBAL);
 	const data = new CompilerData(fileAccess);
 	const resolver = new Resolver(log, data);
 
@@ -150,7 +150,7 @@ export function typeCheck(log: Log, sources: Source[], fileAccess: FileAccess): 
 
 export function compile(log: Log, sources: Source[], options: CompilerOptions): CompilerResult {
 	if (log.hasErrors()) {
-		return null;
+		return;
 	}
 
 	// Generate tokens once

@@ -53,7 +53,7 @@ export class Resolver {
 	}
 
 	resolveNode(node: Node): void {
-		if (node.resolvedType !== null) {
+		if (node.resolvedType) {
 			return;
 		}
 
@@ -81,13 +81,13 @@ export class Resolver {
 				}
 
 				// Array size
-				if (symbol.arrayCount !== null) {
+				if (symbol.arrayCount) {
 					this._resolveAsExpression(symbol.arrayCount);
 					this.checkConversion(symbol.arrayCount, Type.INT);
 				}
 
 				// Initial value
-				if (symbol.value() !== null) {
+				if (symbol.value()) {
 					this._resolveAsExpression(symbol.value());
 					this.checkConversion(symbol.value(), type);
 
@@ -98,15 +98,15 @@ export class Resolver {
 
 				// Constants must be initialized
 				if (symbol.isConst()) {
-					if (symbol.value() !== null) {
+					if (symbol.value()) {
 						if (symbol.value().resolvedType !== Type.ERROR) {
 							const folded = fold(symbol.value());
 
-							if (folded === null) {
+							if (!folded) {
 								this._log.syntaxErrorConstantRequired(symbol.value().range);
 							} else {
 								console.assert(folded.parent() === null);
-								console.assert(folded.resolvedType !== null);
+								console.assert(folded.resolvedType);
 								symbol.constantValue = folded;
 							}
 						}
@@ -145,16 +145,16 @@ export class Resolver {
 			}
 
 			case NodeKind.FOR: {
-				if (node.forSetup() !== null) {
+				if (node.forSetup()) {
 					this._resolveAsExpression(node.forSetup());
 				}
 
-				if (node.forTest() !== null) {
+				if (node.forTest()) {
 					this._resolveAsExpression(node.forTest());
 					this.checkConversion(node.forTest(), Type.BOOL);
 				}
 
-				if (node.forUpdate() !== null) {
+				if (node.forUpdate()) {
 					this._resolveAsExpression(node.forUpdate());
 				}
 
@@ -172,12 +172,12 @@ export class Resolver {
 
 				this.resolveNode(symbol1.returnType);
 
-				if (symbol1.block !== null) {
+				if (symbol1.block) {
 					this._returnType = symbol1.returnType.resolvedType;
 					this._resolveBlockOrStatement(symbol1.block);
 
 					// Missing a return statement is an error
-					if (this._returnType !== null && this._returnType !== Type.VOID && symbol1.block.hasControlFlowAtEnd) {
+					if (this._returnType && this._returnType !== Type.VOID && symbol1.block.hasControlFlowAtEnd) {
 						this._log.semanticErrorMissingReturn(symbol1.range, symbol1.name, this._returnType);
 					}
 
@@ -191,7 +191,7 @@ export class Resolver {
 				this.checkConversion(node.ifTest(), Type.BOOL);
 				this._resolveBlockOrStatement(node.ifTrue());
 
-				if (node.ifFalse() !== null) {
+				if (node.ifFalse()) {
 					this._resolveBlockOrStatement(node.ifFalse());
 				}
 				break;
@@ -202,12 +202,12 @@ export class Resolver {
 			}
 
 			case NodeKind.RETURN: {
-				if (node.returnValue() !== null) {
+				if (node.returnValue()) {
 					this.resolveNode(node.returnValue());
-					this.checkConversion(node.returnValue(), this._returnType !== null ? this._returnType : Type.ERROR);
+					this.checkConversion(node.returnValue(), this._returnType ? this._returnType : Type.ERROR);
 				} else {
 					node.resolvedType = Type.VOID;
-					this.checkConversion(node, this._returnType !== null ? this._returnType : Type.ERROR);
+					this.checkConversion(node, this._returnType ? this._returnType : Type.ERROR);
 				}
 				break;
 			}
@@ -295,14 +295,14 @@ export class Resolver {
 				// Make sure the extension is enabled if it hasn't been specified
 				const name = symbol3.requiredExtension;
 
-				if (name !== null && !this._generatedExtensions.has(name) && this._data.extensionBehavior(name) === ExtensionBehavior.DEFAULT) {
+				if (name && !this._generatedExtensions.has(name) && this._data.extensionBehavior(name) === ExtensionBehavior.DEFAULT) {
 					this._generatedExtensions.set(name, Node.createExtension(name, ExtensionBehavior.ENABLE));
 				}
 				break;
 			}
 
 			case NodeKind.SEQUENCE: {
-				for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+				for (let child = node.firstChild(); child; child = child.nextSibling()) {
 					this._resolveAsExpression(child);
 				}
 
@@ -322,7 +322,7 @@ export class Resolver {
 			}
 		}
 
-		console.assert(node.resolvedType !== null);
+		console.assert(node.resolvedType);
 	}
 
 	_resolveBlockOrStatement(node: Node): void {
@@ -330,7 +330,7 @@ export class Resolver {
 		this._controlFlow.pushBlock(node);
 
 		if (node.kind === NodeKind.BLOCK) {
-			for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+			for (let child = node.firstChild(); child; child = child.nextSibling()) {
 				this.resolveNode(child);
 				this._controlFlow.visitStatement(child);
 			}
@@ -394,7 +394,7 @@ export class Resolver {
 			case NodeKind.MULTIPLY:
 			case NodeKind.DIVIDE: {
 				node.resolvedType =
-					isSame && leftType.componentType() !== null
+					isSame && leftType.componentType()
 						? leftType
 						: leftType.hasFloatComponents() && rightType === Type.FLOAT
 							? leftType
@@ -454,7 +454,7 @@ export class Resolver {
 			case NodeKind.ASSIGN_MULTIPLY:
 			case NodeKind.ASSIGN_DIVIDE: {
 				node.resolvedType =
-					isSame && leftType.componentType() !== null
+					isSame && leftType.componentType()
 						? leftType
 						: leftType.hasFloatComponents() && rightType === Type.FLOAT
 							? leftType
@@ -473,14 +473,14 @@ export class Resolver {
 				if (rightType === Type.INT) {
 					const indexType = leftType.indexType();
 
-					if (indexType !== null) {
+					if (indexType) {
 						node.resolvedType = indexType;
 					}
 
 					// Run bounds checking on the constant-folded value
 					const folded = fold(right);
 
-					if (folded !== null && folded.kind === NodeKind.INT) {
+					if (folded && folded.kind === NodeKind.INT) {
 						const value = folded.asInt();
 						const count = leftType.indexCount();
 
@@ -512,7 +512,7 @@ export class Resolver {
 		const _arguments: Node[] = [];
 		let hasError = false;
 
-		for (let child = callTarget.nextSibling(); child !== null; child = child.nextSibling()) {
+		for (let child = callTarget.nextSibling(); child; child = child.nextSibling()) {
 			this._resolveAsExpression(child);
 			_arguments.push(child);
 
@@ -525,7 +525,7 @@ export class Resolver {
 			return;
 		}
 
-		if (symbol !== null) {
+		if (symbol) {
 			if (symbol.isFunction()) {
 				this._resolveFunctionOverloads(symbol.asFunction(), node, _arguments);
 				return;
@@ -572,7 +572,7 @@ export class Resolver {
 		} else if (value === Type.ERROR) {
 			// Ignore this case since the error was already reported
 		} else {
-			if (type.symbol !== null && type.symbol.isStruct()) {
+			if (type.symbol && type.symbol.isStruct()) {
 				for (const variable of type.symbol.asStruct().variables) {
 					if (variable.name === name) {
 						node.symbol = variable as BaseSymbol;
@@ -583,7 +583,7 @@ export class Resolver {
 				}
 			}
 
-			if (node.symbol === null) {
+			if (!node.symbol) {
 				this._log.semanticErrorBadMember(range, type, name);
 			}
 		}
@@ -593,7 +593,7 @@ export class Resolver {
 		let overloads: FunctionSymbol[] = [];
 
 		// Collect all relevant overloads but ignore forward-declared functions that also have an implementation
-		for (let overload = overloaded; overload !== null; overload = overload.previousOverload) {
+		for (let overload = overloaded; overload; overload = overload.previousOverload) {
 			if (!(overloads.indexOf(overload.sibling) !== -1)) {
 				overloads.push(overload);
 			}
@@ -665,7 +665,7 @@ export class Resolver {
 			return;
 		}
 
-		if (type.componentType() !== null) {
+		if (type.componentType()) {
 			const count = type.componentCount();
 			let hasMatrixArgument = false;
 
@@ -783,7 +783,7 @@ export class Resolver {
 	}
 
 	_resolveChildren(node: Node): void {
-		for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			this.resolveNode(child);
 		}
 	}

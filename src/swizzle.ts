@@ -16,7 +16,7 @@ export function strings(componentCount: number): string[] {
 	}
 
 	console.assert(false);
-	return null;
+	return;
 }
 
 export function type(comonentType: Type, componentCount: number): Type {
@@ -79,7 +79,7 @@ export function type(comonentType: Type, componentCount: number): Type {
 	}
 
 	console.assert(false);
-	return null;
+	return;
 }
 
 export const _STRINGS_2: string[] = ['xy', 'st', 'rg'];

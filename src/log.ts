@@ -16,7 +16,7 @@ export class Diagnostic {
 	noteText: string;
 
 	static format(kind: string, range: Range, text: string): string {
-		if (range === null) {
+		if (!range) {
 			return `${kind}: ${text}\n`;
 		}
 
@@ -48,7 +48,7 @@ export class Log {
 			builder += Diagnostic.format(diagnostic.kind === DiagnosticKind.ERROR ? 'error' : 'warning', diagnostic.range, diagnostic.text);
 
 			// Append notes after the diagnostic they apply to
-			if (diagnostic.noteRange !== null) {
+			if (diagnostic.noteRange) {
 				builder += Diagnostic.format('note', diagnostic.noteRange, diagnostic.noteText);
 			}
 		}
@@ -65,7 +65,7 @@ export class Log {
 	}
 
 	error(range: Range, text: string): void {
-		if (this._prevErrorRange !== null && this._prevErrorRange.start === range.start) {
+		if (this._prevErrorRange && this._prevErrorRange.start === range.start) {
 			return; // Don't double-report errors in the same spot
 		}
 
@@ -234,7 +234,7 @@ export class Log {
 	semanticErrorArgumentCountFunction(range: Range, expected: number, found: number, name: string, _function: Range): void {
 		this.error(range, `Expected ${expected} argument${Log.plural(expected)} but found ${found} argument${Log.plural(found)} when calling function "${name}"`);
 
-		if (_function !== null) {
+		if (_function) {
 			this.note(_function, `The definition of function "${name}" is here`);
 		}
 	}
@@ -242,7 +242,7 @@ export class Log {
 	semanticErrorArgumentCountConstructor(range: Range, expected: number, found: number, name: string, struct: Range): void {
 		this.error(range, `Expected ${expected} argument${Log.plural(expected)} but found ${found} argument${Log.plural(found)} when constructing type "${name}"`);
 
-		if (struct !== null) {
+		if (struct) {
 			this.note(struct, `The definition of struct "${name}" is here`);
 		}
 	}
@@ -256,7 +256,7 @@ export class Log {
 	}
 
 	semanticErrorArrayHook(range: Range, type: Type): void {
-		if (type.isArrayOf !== null) {
+		if (type.isArrayOf) {
 			this.error(range, `Cannot use a conditional expression with array type "${type}"`);
 		} else {
 			this.error(range, `Cannot use a conditional expression with type "${type}" because it contains an array`);
@@ -264,7 +264,7 @@ export class Log {
 	}
 
 	semanticErrorArrayAssignment(range: Range, type: Type): void {
-		if (type.isArrayOf !== null) {
+		if (type.isArrayOf) {
 			this.error(range, `Cannot assign to array type "${type}"`);
 		} else {
 			this.error(range, `Cannot assign to type "${type}" because it contains an array`);

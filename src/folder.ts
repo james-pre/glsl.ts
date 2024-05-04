@@ -14,8 +14,8 @@ export function fold(node: Node): Node {
 	else {
 		const folded = _fold(node);
 
-		if (folded !== null) {
-			console.assert(folded.parent() === null);
+		if (folded) {
+			console.assert(!folded.parent());
 
 			if (folded.kind !== NodeKind.UNKNOWN_CONSTANT) {
 				_check(folded);
@@ -51,11 +51,11 @@ export function _check(node: Node): void {
 			const componentCount = target.resolvedType.componentCount();
 
 			// Native component types
-			if (componentType !== null) {
+			if (componentType) {
 				console.assert(node.childCount() === 1 + componentCount);
 				console.assert(target.resolvedType !== Type.INT && target.resolvedType !== Type.BOOL && target.resolvedType !== Type.FLOAT);
 
-				for (let child = target.nextSibling(); child !== null; child = child.nextSibling()) {
+				for (let child = target.nextSibling(); child; child = child.nextSibling()) {
 					console.assert(child.resolvedType === componentType);
 					console.assert(child.kind !== NodeKind.CALL);
 					_check(child);
@@ -68,7 +68,7 @@ export function _check(node: Node): void {
 				let i = 0;
 				console.assert(node.childCount() === 1 + struct.variables.length);
 
-				for (let child1 = target.nextSibling(); child1 !== null; child1 = child1.nextSibling()) {
+				for (let child1 = target.nextSibling(); child1; child1 = child1.nextSibling()) {
 					console.assert(child1.resolvedType === struct.variables[i].type.resolvedType);
 					_check(child1);
 					i++;
@@ -85,10 +85,10 @@ export function _check(node: Node): void {
 }
 
 export function _fold(node: Node): Node {
-	console.assert(node.resolvedType !== null);
+	console.assert(node.resolvedType);
 
 	if (node.resolvedType === Type.ERROR) {
-		return null;
+		return;
 	}
 
 	switch (node.kind) {
@@ -241,14 +241,14 @@ export function _fold(node: Node): Node {
 		}
 	}
 
-	return null;
+	return;
 }
 
 export function _foldName(node: Node): Node {
 	const symbol = node.symbol;
 
-	if (symbol !== null && symbol.isConst()) {
-		if (symbol.constantValue !== null) {
+	if (symbol && symbol.isConst()) {
+		if (symbol.constantValue) {
 			return symbol.constantValue.clone();
 		}
 
@@ -257,19 +257,19 @@ export function _foldName(node: Node): Node {
 		}
 	}
 
-	return null;
+	return;
 }
 
 export function _foldSequence(node: Node): Node {
-	for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+	for (let child = node.firstChild(); child; child = child.nextSibling()) {
 		const folded = fold(child);
 
-		if (folded === null || child === node.lastChild()) {
+		if (!folded || child === node.lastChild()) {
 			return folded;
 		}
 	}
 
-	return null;
+	return;
 }
 
 export function _foldHook(node: Node): Node {
@@ -277,17 +277,17 @@ export function _foldHook(node: Node): Node {
 	const foldedTrue = fold(node.hookTrue());
 	const foldedFalse = fold(node.hookFalse());
 
-	if (foldedTest !== null && foldedTest.kind === NodeKind.BOOL && foldedTrue !== null && foldedFalse !== null) {
+	if (foldedTest && foldedTest.kind === NodeKind.BOOL && foldedTrue && foldedFalse) {
 		return foldedTest.asBool() ? foldedTrue : foldedFalse;
 	}
 
-	return null;
+	return;
 }
 
 export function _foldDot(node: Node): Node {
 	const folded = fold(node.dotTarget());
 
-	if (folded !== null && folded.kind === NodeKind.CALL) {
+	if (folded && folded.kind === NodeKind.CALL) {
 		const resolvedType = folded.resolvedType;
 		const name = node.asString();
 
@@ -315,7 +315,7 @@ export function _foldDot(node: Node): Node {
 		}
 
 		// Evaluate a struct field
-		else if (resolvedType.symbol !== null && resolvedType.symbol.isStruct()) {
+		else if (resolvedType.symbol && resolvedType.symbol.isStruct()) {
 			const symbol = resolvedType.symbol.asStruct();
 			const variables = symbol.variables;
 			console.assert(folded.childCount() === 1 + variables.length);
@@ -331,7 +331,7 @@ export function _foldDot(node: Node): Node {
 		}
 	}
 
-	return null;
+	return;
 }
 
 export function _foldIndex(node: Node): Node {
@@ -339,7 +339,7 @@ export function _foldIndex(node: Node): Node {
 	const foldedRight = fold(node.binaryRight());
 
 	// Both children must also be constants
-	if (foldedLeft !== null && foldedLeft.kind === NodeKind.CALL && foldedRight !== null && foldedRight.kind === NodeKind.INT) {
+	if (foldedLeft && foldedLeft.kind === NodeKind.CALL && foldedRight && foldedRight.kind === NodeKind.INT) {
 		const type = foldedLeft.resolvedType;
 
 		if (type.isVector()) {
@@ -373,7 +373,7 @@ export function _foldIndex(node: Node): Node {
 		}
 	}
 
-	return null;
+	return;
 }
 
 export function _foldCall(node: Node): Node {
@@ -381,7 +381,7 @@ export function _foldCall(node: Node): Node {
 
 	// Only constructor calls are considered constants
 	if (target.kind !== NodeKind.TYPE) {
-		return null;
+		return;
 	}
 
 	const type = target.resolvedType;
@@ -391,20 +391,20 @@ export function _foldCall(node: Node): Node {
 	let count = 0;
 
 	// Make sure all arguments are constants
-	for (let child = target.nextSibling(); child !== null; child = child.nextSibling()) {
+	for (let child = target.nextSibling(); child; child = child.nextSibling()) {
 		let folded = fold(child);
 
-		if (folded === null) {
-			return null;
+		if (!folded) {
+			return;
 		}
 
 		// Expand values inline from constructed native types
-		if (folded.kind === NodeKind.CALL && componentType !== null && folded.callTarget().resolvedType.componentType() !== null) {
-			for (let value = folded.callTarget().nextSibling(); value !== null; value = value.nextSibling()) {
+		if (folded.kind === NodeKind.CALL && componentType && folded.callTarget().resolvedType.componentType()) {
+			for (let value = folded.callTarget().nextSibling(); value; value = value.nextSibling()) {
 				const casted = _castValue(componentType, value);
 
-				if (casted === null) {
-					return null;
+				if (!casted) {
+					return;
 				}
 
 				_arguments.push(casted);
@@ -413,11 +413,11 @@ export function _foldCall(node: Node): Node {
 
 		// Auto-cast values for primitive types
 		else {
-			if (componentType !== null) {
+			if (componentType) {
 				folded = _castValue(componentType, folded);
 
-				if (folded === null) {
-					return null;
+				if (!folded) {
+					return;
 				}
 			}
 
@@ -434,26 +434,24 @@ export function _foldCall(node: Node): Node {
 	// If a matrix argument is given to a matrix constructor, it is an error
 	// to have any other arguments
 	if (type.isMatrix() && matrixStride !== 0 && count !== 1) {
-		return null;
+		return;
 	}
 
 	// Native component-based types
-	if (type.componentType() !== null) {
+	if (type.componentType()) {
 		return _foldComponentConstructor(_arguments, type, type.isMatrix() ? matrixStride : 0);
 	}
 
 	// User-defined struct types
-	if (type.symbol !== null && type.symbol.isStruct()) {
+	if (type.symbol && type.symbol.isStruct()) {
 		return _foldStruct(_arguments, type);
 	}
-
-	return null;
 }
 
 export function _floatValues(node: Node): number[] {
 	const values: number[] = [];
 
-	for (let child = node.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
+	for (let child = node.callTarget().nextSibling(); child; child = child.nextSibling()) {
 		values.push(child.asFloat());
 	}
 
@@ -461,13 +459,12 @@ export function _floatValues(node: Node): number[] {
 }
 
 export function _foldMultiply(node: Node): Node {
-	let ref: Node;
 	const left = fold(node.binaryLeft());
 	const right = fold(node.binaryRight());
-	const leftType: Type = left !== null ? left.resolvedType : null;
-	const rightType: Type = right !== null ? right.resolvedType : null;
+	const leftType: Type = left?.resolvedType;
+	const rightType: Type = right?.resolvedType;
 
-	if (left !== null && right !== null) {
+	if (left && right) {
 		// Vector-matrix multiply
 		if ((leftType === Type.VEC2 && rightType === Type.MAT2) || (leftType === Type.VEC3 && rightType === Type.MAT3) || (leftType === Type.VEC4 && rightType === Type.MAT4)) {
 			const stride = leftType.indexCount();
@@ -530,16 +527,8 @@ export function _foldMultiply(node: Node): Node {
 			return result2;
 		}
 
-		return (ref = _foldFloat2(left, right, (a: number, b: number) => {
-			return a * b;
-		})) !== null
-			? ref
-			: _foldInt2(left, right, (a: number, b: number) => {
-					return a * b;
-				});
+		return _foldFloat2(left, right, (a: number, b: number) => a * b) ?? _foldInt2(left, right, (a: number, b: number) => a * b);
 	}
-
-	return null;
 }
 
 export function _castValue(type: Type, node: Node): Node {
@@ -561,9 +550,8 @@ export function _castValue(type: Type, node: Node): Node {
 			break;
 		}
 
-		default: {
-			return null;
-		}
+		default:
+			return;
 	}
 
 	const value1 = type;
@@ -575,8 +563,6 @@ export function _castValue(type: Type, node: Node): Node {
 	} else if (value1 === Type.FLOAT) {
 		return Node.createFloat(value);
 	}
-
-	return null;
 }
 
 export function _foldComponentConstructor(_arguments: Node[], type: Type, matrixStride: number): Node {
@@ -590,7 +576,7 @@ export function _foldComponentConstructor(_arguments: Node[], type: Type, matrix
 		const argument = _arguments[0];
 
 		if (argument.resolvedType !== componentType) {
-			return null;
+			return;
 		}
 
 		// When doing this with a matrix, only the diagonal is filled
@@ -624,7 +610,7 @@ export function _foldComponentConstructor(_arguments: Node[], type: Type, matrix
 	else {
 		// Extra arguments are ignored
 		if (_arguments.length < componentCount) {
-			return null;
+			return;
 		}
 
 		// The constructed value is represented as a constructor call
@@ -633,7 +619,7 @@ export function _foldComponentConstructor(_arguments: Node[], type: Type, matrix
 
 			// All casts should be resolved by this point
 			if (argument1.resolvedType !== componentType) {
-				return null;
+				return;
 			}
 
 			node.appendChild(argument1);
@@ -641,7 +627,7 @@ export function _foldComponentConstructor(_arguments: Node[], type: Type, matrix
 	}
 
 	// Don't wrap primitive types
-	if (type.indexType() === null) {
+	if (!type.indexType()) {
 		return node.lastChild().remove();
 	}
 
@@ -654,13 +640,13 @@ export function _foldStruct(_arguments: Node[], type: Type): Node {
 
 	// Structs can only be constructed with the exact number of arguments
 	if (_arguments.length !== variables.length) {
-		return null;
+		return;
 	}
 
 	// The constructed value is represented as a constructor call
 	for (let i = 0, count = _arguments.length; i < count; i++) {
 		if (_arguments[i].resolvedType !== variables[i].type.resolvedType) {
-			return null;
+			return;
 		}
 
 		node.appendChild(_arguments[i]);
@@ -673,25 +659,21 @@ export function _foldBinaryEquality(node: Node): Node {
 	const left = fold(node.binaryLeft());
 	const right = fold(node.binaryRight());
 
-	if (left !== null && right !== null) {
+	if (left && right) {
 		const value = left.looksTheSameAs(right);
 		return Node.createBool(node.kind === NodeKind.EQUAL ? value : !value);
 	}
-
-	return null;
 }
-
-/////////////////////////////////////////////////////////////////////////////////
 
 export function _foldComponentwiseUnary(node: Node, componentType: Type, argumentKind: NodeKind, op: (v0: Node) => Node): Node {
 	if (node.kind === NodeKind.CALL && node.callTarget().kind === NodeKind.TYPE && node.callTarget().resolvedType.componentType() === componentType) {
 		const result = Node.createConstructorCall(node.callTarget().resolvedType);
 
-		for (let child = node.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
+		for (let child = node.callTarget().nextSibling(); child; child = child.nextSibling()) {
 			const folded = fold(child);
 
-			if (folded === null || folded.kind !== argumentKind) {
-				return null;
+			if (!folded || folded.kind !== argumentKind) {
+				return;
 			}
 
 			result.appendChild(op(folded));
@@ -699,8 +681,6 @@ export function _foldComponentwiseUnary(node: Node, componentType: Type, argumen
 
 		return result;
 	}
-
-	return null;
 }
 
 export function _foldFloat1(node: Node, op: (v0: number) => number): Node {
@@ -708,9 +688,7 @@ export function _foldFloat1(node: Node, op: (v0: number) => number): Node {
 		return Node.createFloat(op(node.asFloat()));
 	}
 
-	return _foldComponentwiseUnary(node, Type.FLOAT, NodeKind.FLOAT, (x: Node) => {
-		return Node.createFloat(op(x.asFloat()));
-	});
+	return _foldComponentwiseUnary(node, Type.FLOAT, NodeKind.FLOAT, (x: Node) => Node.createFloat(op(x.asFloat())));
 }
 
 export function _foldInt1(node: Node, op: (v0: number) => number): Node {
@@ -735,12 +713,12 @@ export function _foldComponentwiseBinary(left: Node, right: Node, componentType:
 		let leftChild = left.callTarget().nextSibling();
 		let rightChild = right.callTarget().nextSibling();
 
-		while (leftChild !== null && rightChild !== null) {
+		while (leftChild && rightChild) {
 			const foldedLeft = fold(leftChild);
 			const foldedRight = fold(rightChild);
 
-			if (foldedLeft === null || foldedLeft.kind !== argumentKind || foldedRight === null || foldedRight.kind !== argumentKind) {
-				return null;
+			if (!foldedLeft || foldedLeft.kind !== argumentKind || !foldedRight || foldedRight.kind !== argumentKind) {
+				return;
 			}
 
 			result.appendChild(op(foldedLeft, foldedRight));
@@ -748,7 +726,7 @@ export function _foldComponentwiseBinary(left: Node, right: Node, componentType:
 			rightChild = rightChild.nextSibling();
 		}
 
-		if (leftChild === null && rightChild === null) {
+		if (!leftChild && !rightChild) {
 			return result;
 		}
 	}
@@ -757,11 +735,11 @@ export function _foldComponentwiseBinary(left: Node, right: Node, componentType:
 	else if (leftHasComponents && right.kind === argumentKind) {
 		const result1 = Node.createConstructorCall(left.resolvedType);
 
-		for (let child = left.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
+		for (let child = left.callTarget().nextSibling(); child; child = child.nextSibling()) {
 			const folded = fold(child);
 
-			if (folded === null || folded.kind !== argumentKind) {
-				return null;
+			if (!folded || folded.kind !== argumentKind) {
+				return;
 			}
 
 			result1.appendChild(op(folded, right));
@@ -772,22 +750,20 @@ export function _foldComponentwiseBinary(left: Node, right: Node, componentType:
 
 	// Scalar-vector binary operator
 	else if (left.kind === argumentKind && rightHasComponents) {
-		const result2 = Node.createConstructorCall(right.resolvedType);
+		const result = Node.createConstructorCall(right.resolvedType);
 
-		for (let child1 = right.callTarget().nextSibling(); child1 !== null; child1 = child1.nextSibling()) {
-			const folded1 = fold(child1);
+		for (let child = right.callTarget().nextSibling(); child; child = child.nextSibling()) {
+			const folded = fold(child);
 
-			if (folded1 === null || folded1.kind !== argumentKind) {
-				return null;
+			if (!folded || folded.kind !== argumentKind) {
+				return;
 			}
 
-			result2.appendChild(op(left, folded1));
+			result.appendChild(op(left, folded));
 		}
 
-		return result2;
+		return result;
 	}
-
-	return null;
 }
 
 export function _foldFloat2(left: Node, right: Node, op: (v0: number, v1: number) => number): Node {
@@ -810,27 +786,20 @@ export function _foldInt2(left: Node, right: Node, op: (v0: number, v1: number) 
 	});
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-
 export function _foldUnaryBool(node: Node, op: (v0: boolean) => boolean): Node {
 	const value = fold(node.unaryValue());
 
-	if (value !== null && value.kind === NodeKind.BOOL) {
+	if (value && value.kind === NodeKind.BOOL) {
 		return Node.createBool(op(value.asBool()));
 	}
-
-	return null;
 }
 
 export function _foldUnaryFloatOrInt(node: Node, floatOp: (v0: number) => number, intOp: (v0: number) => number): Node {
-	let ref: Node;
 	const value = fold(node.unaryValue());
 
-	if (value !== null) {
-		return (ref = _foldFloat1(value, floatOp)) !== null ? ref : _foldInt1(value, intOp);
+	if (value) {
+		return _foldFloat1(value, floatOp) ?? _foldInt1(value, intOp);
 	}
-
-	return null;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -839,23 +808,18 @@ export function _foldBinaryBool(node: Node, op: (v0: boolean, v1: boolean) => bo
 	const left = fold(node.binaryLeft());
 	const right = fold(node.binaryRight());
 
-	if (left !== null && right !== null && left.kind === NodeKind.BOOL && right.kind === NodeKind.BOOL) {
+	if (left && right && left.kind === NodeKind.BOOL && right.kind === NodeKind.BOOL) {
 		return Node.createBool(op(left.asBool(), right.asBool()));
 	}
-
-	return null;
 }
 
 export function _foldBinaryFloatOrInt(node: Node, floatOp: (v0: number, v1: number) => number, intOp: (v0: number, v1: number) => number): Node {
-	let ref: Node;
 	const left = fold(node.binaryLeft());
 	const right = fold(node.binaryRight());
 
-	if (left !== null && right !== null) {
-		return (ref = _foldFloat2(left, right, floatOp)) !== null ? ref : _foldInt2(left, right, intOp);
+	if (left && right) {
+		return _foldFloat2(left, right, floatOp) ?? _foldInt2(left, right, intOp);
 	}
-
-	return null;
 }
 
 export function _foldBinaryFloatOrIntToBool(node: Node, op: (v0: number, v1: number) => boolean): Node {
@@ -865,7 +829,7 @@ export function _foldBinaryFloatOrIntToBool(node: Node, op: (v0: number, v1: num
 	// The comparison operators only work on scalars in GLSL. To do comparisons
 	// on vectors, the functions greaterThan(), lessThan(), greaterThanEqual(),
 	// and lessThanEqual() must be used.
-	if (left !== null && right !== null) {
+	if (left && right) {
 		if (left.kind === NodeKind.FLOAT && right.kind === NodeKind.FLOAT) {
 			return Node.createBool(op(left.asFloat(), right.asFloat()));
 		}
@@ -874,6 +838,4 @@ export function _foldBinaryFloatOrIntToBool(node: Node, op: (v0: number, v1: num
 			return Node.createBool(op(left.asInt(), right.asInt()));
 		}
 	}
-
-	return null;
 }

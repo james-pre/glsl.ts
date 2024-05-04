@@ -73,7 +73,7 @@ export class Range {
 	}
 
 	public format(maxLength: number): FormattedRange {
-		console.assert(this.source !== null);
+		console.assert(this.source);
 		const start = this.source.indexToLineColumn(this.start);
 		const end = this.source.indexToLineColumn(this.end);
 		let line = this.source.contentsOfLine(start.line);

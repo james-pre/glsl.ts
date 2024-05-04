@@ -95,7 +95,7 @@ export class BaseSymbol {
 	}
 
 	resolvedType(): Type {
-		if (this._resolvedType === null) {
+		if (!this._resolvedType) {
 			this._resolvedType = new Type(this, null, 0);
 		}
 
@@ -171,8 +171,7 @@ export class VariableSymbol extends BaseSymbol {
 	arrayCount: Node;
 
 	value(): Node {
-		let ref: Node;
-		return (ref = this.node) !== null ? ref.variableInitializer() : null;
+		return this.node?.variableInitializer();
 	}
 
 	constructor(id: number, range: Range, name: string, scope: Scope, kind: VariableKind) {

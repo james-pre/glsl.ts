@@ -27,15 +27,15 @@ export class SymbolQuery {
 	swizzleType: Type;
 
 	generateTooltip(): Tooltip {
-		if (this.swizzleName !== null) {
+		if (this.swizzleName) {
 			return new Tooltip(`${this.swizzleType} ${this.swizzleName};`, '');
 		}
 
-		if (this.symbol !== null) {
+		if (this.symbol) {
 			return new Tooltip(_tooltipForSymbol(this.symbol), _leadingCommentsToMarkdown(this.symbol.comments));
 		}
 
-		return null;
+		return;
 	}
 
 	run(global: Node): void {
@@ -84,11 +84,11 @@ export class SymbolQuery {
 	_visit(node: Node): boolean {
 		let ref: Type;
 
-		if (node === null) {
+		if (!node) {
 			return false;
 		}
 
-		for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			if (this._visit(child)) {
 				return true;
 			}
@@ -108,7 +108,7 @@ export class SymbolQuery {
 			case NodeKind.TYPE: {
 				if (this._touches(node.range)) {
 					this.resolvedType = node.resolvedType;
-					this.symbol = ((ref = this.resolvedType).isArrayOf !== null ? ref.isArrayOf : this.resolvedType).symbol;
+					this.symbol = (this.resolvedType.isArrayOf ?? this.resolvedType).symbol;
 					this.range = node.range;
 					return true;
 				}
@@ -176,7 +176,7 @@ export class SymbolsQuery {
 			}
 
 			case NodeKind.VARIABLES: {
-				for (let child = node.variablesType().nextSibling(); child !== null; child = child.nextSibling()) {
+				for (let child = node.variablesType().nextSibling(); child; child = child.nextSibling()) {
 					console.assert(child.kind === NodeKind.VARIABLE);
 					this._collectSymbol(child.symbol);
 				}
@@ -184,7 +184,7 @@ export class SymbolsQuery {
 			}
 
 			case NodeKind.GLOBAL: {
-				for (let child1 = node.firstChild(); child1 !== null; child1 = child1.nextSibling()) {
+				for (let child1 = node.firstChild(); child1; child1 = child1.nextSibling()) {
 					this._visit(child1);
 				}
 				break;
@@ -193,7 +193,7 @@ export class SymbolsQuery {
 	}
 
 	_collectSymbol(symbol: BaseSymbol): void {
-		if (symbol.range !== null && symbol.range.source === this.source) {
+		if (symbol.range && symbol.range.source === this.source) {
 			this.symbols.push(symbol);
 		}
 	}
@@ -215,7 +215,7 @@ export class RenameQuery {
 		query.run(global);
 		this.symbol = query.symbol;
 
-		if (this.symbol !== null) {
+		if (this.symbol) {
 			this._visit(global);
 
 			// Remove overlapping ranges just in case
@@ -226,14 +226,14 @@ export class RenameQuery {
 			this.ranges = this.ranges.filter((range: Range) => {
 				const previous = current;
 				current = range;
-				return previous !== null && current.overlaps(previous);
+				return previous && current.overlaps(previous);
 			});
 		}
 	}
 
 	_appendRange(range: Range, check: BaseSymbol): void {
 		// Sanity check the range to make sure it contains the target name
-		if (check === this.symbol && range !== null && range.toString() === this.symbol.name) {
+		if (check === this.symbol && range && range.toString() === this.symbol.name) {
 			this.ranges.push(range);
 		}
 	}
@@ -265,8 +265,8 @@ export class RenameQuery {
 	}
 
 	_visit(node: Node): void {
-		if (node !== null) {
-			for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+		if (node) {
+			for (let child = node.firstChild(); child; child = child.nextSibling()) {
 				this._visit(child);
 			}
 
@@ -345,7 +345,7 @@ export class CompletionQuery {
 	}
 
 	_touches(range: Range): boolean {
-		return range !== null && range.source === this.source && range.touches(this.index);
+		return range && range.source === this.source && range.touches(this.index);
 	}
 
 	_addTextualCompletion(kind: string, name: string): Completion {
@@ -376,7 +376,7 @@ export class CompletionQuery {
 	}
 
 	_visit(node: Node, isGlobal: boolean): boolean {
-		if (node === null) {
+		if (!node) {
 			return false;
 		}
 
@@ -482,7 +482,7 @@ export class CompletionQuery {
 								}
 							}
 						}
-					} else if (type.symbol !== null && type.symbol.isStruct()) {
+					} else if (type.symbol && type.symbol.isStruct()) {
 						for (const variable of type.symbol.asStruct().variables) {
 							this._addSymbolCompletion(variable as BaseSymbol);
 						}
@@ -495,7 +495,7 @@ export class CompletionQuery {
 		}
 
 		if (isGlobal || touches || node.kind === NodeKind.VARIABLES) {
-			for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+			for (let child = node.firstChild(); child; child = child.nextSibling()) {
 				if (this._visit(child, false)) {
 					return true;
 				}
@@ -537,11 +537,11 @@ export class SignatureQuery {
 	}
 
 	_touches(range: Range): boolean {
-		return range !== null && range.source === this.source && range.touches(this.index);
+		return range && range.source === this.source && range.touches(this.index);
 	}
 
 	_visit(node: Node): boolean {
-		if (node === null) {
+		if (!node) {
 			return false;
 		}
 
@@ -549,7 +549,7 @@ export class SignatureQuery {
 			return false;
 		}
 
-		for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			if (this._visit(child)) {
 				return true;
 			}
@@ -570,7 +570,7 @@ export class SignatureQuery {
 					const symbol = type.symbol;
 					const _arguments: Node[] = [];
 
-					for (let arg = firstArgument; arg !== null; arg = arg.nextSibling()) {
+					for (let arg = firstArgument; arg; arg = arg.nextSibling()) {
 						_arguments.push(arg);
 					}
 
@@ -578,7 +578,7 @@ export class SignatureQuery {
 						const overloads: FunctionSymbol[] = [];
 
 						// Collect all relevant overloads but ignore forward-declared functions that also have an implementation
-						for (let overload = symbol.asFunction(); overload !== null; overload = overload.previousOverload) {
+						for (let overload = symbol.asFunction(); overload; overload = overload.previousOverload) {
 							if (!(overloads.indexOf(overload.sibling) !== -1)) {
 								overloads.push(overload);
 							}
@@ -675,7 +675,7 @@ export class SignatureQuery {
 						}
 					}
 
-					if (symbol.isStruct() && type.componentType() === null) {
+					if (symbol.isStruct() && !type.componentType()) {
 						// Generate the constructor call signature
 						const fields = symbol.asStruct().variables.map<string>((arg: VariableSymbol) => {
 							return _variableTooltipText(arg);
@@ -689,7 +689,7 @@ export class SignatureQuery {
 						this.activeArgument = 0;
 
 						for (const arg1 of _arguments) {
-							if (this.index <= arg1.range.end || arg1.nextSibling() === null) {
+							if (this.index <= arg1.range.end || !arg1.nextSibling()) {
 								break;
 							}
 
@@ -735,7 +735,7 @@ export function constantValueToString(node: Node): string {
 			const callTarget = node.callTarget();
 			let text = `${node.resolvedType}(`;
 
-			for (let child = callTarget.nextSibling(); child !== null; child = child.nextSibling()) {
+			for (let child = callTarget.nextSibling(); child; child = child.nextSibling()) {
 				if (child.previousSibling() !== callTarget) {
 					text += ', ';
 				}
@@ -747,7 +747,7 @@ export function constantValueToString(node: Node): string {
 		}
 	}
 
-	return null;
+	return;
 }
 
 export function _tooltipForSymbol(symbol: BaseSymbol): string {
@@ -772,10 +772,10 @@ export function _tooltipForSymbol(symbol: BaseSymbol): string {
 		const variable1 = symbol.asVariable();
 		let text1 = _variableTooltipText(variable1);
 
-		if (variable1.constantValue !== null) {
+		if (variable1.constantValue) {
 			const constantValue = constantValueToString(variable1.constantValue);
 
-			if (constantValue !== null) {
+			if (constantValue) {
 				text1 += ' = ' + constantValue;
 			}
 		}
@@ -799,14 +799,14 @@ export function _tooltipForSymbol(symbol: BaseSymbol): string {
 	}
 
 	console.assert(false);
-	return null;
+	return;
 }
 
 export function _variableTooltipText(variable: VariableSymbol): string {
 	const type = variable.type.resolvedType;
-	let text = `${SymbolFlags_toString(variable.flags)}${type.isArrayOf !== null ? type.isArrayOf : type} ${variable.name}`;
+	let text = `${SymbolFlags_toString(variable.flags)}${type.isArrayOf ? type.isArrayOf : type} ${variable.name}`;
 
-	if (type.isArrayOf !== null) {
+	if (type.isArrayOf) {
 		text += type.arrayCount !== 0 ? `[${type.arrayCount}]` : '[]';
 	}
 
@@ -816,7 +816,7 @@ export function _variableTooltipText(variable: VariableSymbol): string {
 export function _leadingCommentsToMarkdown(comments: string[]): string {
 	let markdown = '';
 
-	if (comments !== null) {
+	if (comments) {
 		for (const comment of comments) {
 			let start = 0;
 			let end = comment.length;

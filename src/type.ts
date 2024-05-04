@@ -47,7 +47,7 @@ export class Type {
 	];
 
 	rootType(): Type {
-		if (this.isArrayOf !== null) {
+		if (this.isArrayOf) {
 			return this.isArrayOf.rootType();
 		}
 
@@ -75,7 +75,7 @@ export class Type {
 	}
 
 	toString(): string {
-		if (this.isArrayOf !== null) {
+		if (this.isArrayOf) {
 			return this.arrayCount !== 0 ? `${this.isArrayOf}[${this.arrayCount}]` : `${this.isArrayOf}[]`;
 		}
 
@@ -150,7 +150,7 @@ export class Type {
 		} else if (value === Type.INT || value === Type.IVEC2 || value === Type.IVEC3 || value === Type.IVEC4) {
 			return Type.INT;
 		} else {
-			return null;
+			return;
 		}
 	}
 

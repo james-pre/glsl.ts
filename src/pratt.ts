@@ -114,7 +114,7 @@ export class ParserContext {
 	}
 
 	popScope(): void {
-		console.assert(this._scope !== null);
+		console.assert(this._scope);
 		this._scope = this._scope.parent;
 	}
 
@@ -170,29 +170,29 @@ export class Pratt {
 		const token = context.current();
 		const parselet = this._table.get(token.kind);
 
-		if (!parselet || parselet.prefix === null) {
+		if (!parselet || !parselet.prefix) {
 			context.unexpectedToken();
-			return null;
+			return;
 		}
 
 		const node = this.resume(context, precedence, parselet.prefix(context));
 
-		console.assert(node === null || node.range !== null); // Parselets must set the range of every node
+		console.assert(!node || node.range); // Parselets must set the range of every node
 		return node;
 	}
 
 	resume(context: ParserContext, precedence: Precedence, left: Node): Node {
-		while (left !== null) {
+		while (left) {
 			const kind = context.current().kind;
 			const parselet = this._table.get(kind);
 
-			if (!parselet || parselet.infix === null || parselet.precedence <= precedence) {
+			if (!parselet || !parselet.infix || parselet.precedence <= precedence) {
 				break;
 			}
 
 			left = parselet.infix(context, left);
 
-			console.assert(left === null || left.range !== null); // Parselets must set the range of every node
+			console.assert(!left || left.range); // Parselets must set the range of every node
 		}
 
 		return left;
@@ -208,7 +208,7 @@ export class Pratt {
 		this.parselet(kind, Precedence.LOWEST).prefix = (context: ParserContext) => {
 			const token = context.next();
 			const value = this.parse(context, precedence);
-			return value !== null ? callback(context, token, value) : null;
+			return value ? callback(context, token, value) : null;
 		};
 	}
 
@@ -222,7 +222,7 @@ export class Pratt {
 		this.parselet(kind, precedence).infix = (context: ParserContext, left: Node) => {
 			const token = context.next();
 			const right = this.parse(context, precedence);
-			return right !== null ? callback(context, left, token, right) : null;
+			return right ? callback(context, left, token, right) : null;
 		};
 	}
 
@@ -231,7 +231,7 @@ export class Pratt {
 			const token = context.next();
 
 			const right = this.parse(context, precedence - 1); // Subtract 1 for right-associativity
-			return right !== null ? callback(context, left, token, right) : null;
+			return right ? callback(context, left, token, right) : null;
 		};
 	}
 

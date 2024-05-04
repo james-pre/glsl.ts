@@ -60,7 +60,7 @@ export class Renamer {
 					const old = symbol.name;
 
 					if (!symbol.isImportedOrExported() && (this._renameSymbols === 'all' || (this._renameSymbols === 'internal-only' && !symbol.isAttributeOrUniform()))) {
-						if (name === null) {
+						if (!name) {
 							name = this._generateSymbolName();
 						}
 
@@ -81,11 +81,11 @@ export class Renamer {
 		let ref1: Renamer.SymbolInfo;
 		let ref: Renamer.SymbolInfo;
 
-		if (node.symbol !== null) {
+		if (node.symbol) {
 			(ref = this._recordSymbol(node.symbol)).useCount = ref.useCount + 1;
 		}
 
-		for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			this._scanForSymbols(child);
 		}
 
@@ -94,7 +94,7 @@ export class Renamer {
 				const variable = node.symbol.asVariable();
 				this._scanForSymbols(variable.type);
 
-				if (variable.value() !== null) {
+				if (variable.value()) {
 					this._scanForSymbols(variable.value());
 				}
 				break;
@@ -105,7 +105,7 @@ export class Renamer {
 				const _function = node.symbol.asFunction();
 				this._enclosingFunctionLabel = this._symbolInfoMap.get(node.symbol.id).label;
 
-				if (_function.sibling !== null) {
+				if (_function.sibling) {
 					this._namingGroupsUnionFind.union(this._enclosingFunctionLabel, this._recordSymbol(_function.sibling as BaseSymbol).label);
 				}
 
@@ -116,7 +116,7 @@ export class Renamer {
 					this._scanForSymbols(argument.type);
 				}
 
-				if (_function.block !== null) {
+				if (_function.block) {
 					this._scanForSymbols(_function.block);
 				}
 
@@ -166,7 +166,7 @@ export class Renamer {
 		const labelToGroup = new Map();
 
 		for (const info of this._symbolInfoList) {
-			if (filter !== null && !filter(info)) {
+			if (filter && !filter(info)) {
 				continue;
 			}
 

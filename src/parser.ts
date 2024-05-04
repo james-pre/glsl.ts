@@ -147,7 +147,7 @@ export function createExpressionParser(): Pratt {
 		const name = token.range.toString();
 		const symbol = context.scope().find(name);
 
-		if (symbol === null) {
+		if (!symbol) {
 			context.log.syntaxErrorBadSymbolReference(token.range);
 			return Node.createParseError().withRange(token.range);
 		}
@@ -189,7 +189,7 @@ export function createExpressionParser(): Pratt {
 		const token = context.next();
 		const value = pratt.parse(context, Precedence.LOWEST);
 
-		if (value === null || !context.expect(TokenKind.RIGHT_PARENTHESIS)) {
+		if (!value || !context.expect(TokenKind.RIGHT_PARENTHESIS)) {
 			return Node.createParseError().withRange(context.spanSince(token.range));
 		}
 
@@ -221,7 +221,7 @@ export function createExpressionParser(): Pratt {
 
 		const value = pratt.parse(context, Precedence.LOWEST);
 
-		if (value === null || !context.expect(TokenKind.RIGHT_BRACKET)) {
+		if (!value || !context.expect(TokenKind.RIGHT_BRACKET)) {
 			return Node.createParseError().withRange(context.spanSince(token.range));
 		}
 
@@ -233,13 +233,13 @@ export function createExpressionParser(): Pratt {
 		const token = context.next();
 		const middle = pratt.parse(context, Precedence.COMMA);
 
-		if (middle === null || !context.expect(TokenKind.COLON)) {
+		if (!middle || !context.expect(TokenKind.COLON)) {
 			return Node.createParseError().withRange(context.spanSince(token.range));
 		}
 
 		const right = pratt.parse(context, Precedence.COMMA);
 
-		if (right === null) {
+		if (!right) {
 			return Node.createParseError().withRange(context.spanSince(token.range));
 		}
 
@@ -259,7 +259,7 @@ export function parseCommaSeparatedList(context: ParserContext, parent: Node, st
 		const firstToken = context.current();
 		const value = pratt.parse(context, Precedence.COMMA);
 
-		if (value !== null) {
+		if (value) {
 			parent.appendChild(value);
 		} else {
 			// Recover from errors due to partially-typed calls
@@ -281,18 +281,18 @@ export function parseDoWhile(context: ParserContext): Node {
 	context.pushScope(new Scope(ScopeKind.LOOP, context.scope()));
 	const body = parseStatement(context, VariableKind.LOCAL);
 
-	if (body === null || !context.expect(TokenKind.WHILE) || !context.expect(TokenKind.LEFT_PARENTHESIS)) {
-		return null;
+	if (!body || !context.expect(TokenKind.WHILE) || !context.expect(TokenKind.LEFT_PARENTHESIS)) {
+		return;
 	}
 
 	const test = pratt.parse(context, Precedence.LOWEST);
 
-	if (test === null) {
-		return null;
+	if (!test) {
+		return;
 	}
 
 	if (!context.expect(TokenKind.RIGHT_PARENTHESIS)) {
-		return null;
+		return;
 	}
 
 	context.popScope();
@@ -309,7 +309,7 @@ export function parseExportOrImport(context: ParserContext): Node {
 		const node = Node.createModifierBlock();
 
 		if (!parseStatements(context, node, VariableKind.GLOBAL) || !context.expect(TokenKind.RIGHT_BRACE)) {
-			return null;
+			return;
 		}
 
 		context.flags = old;
@@ -319,8 +319,8 @@ export function parseExportOrImport(context: ParserContext): Node {
 	// Just parse a single statement
 	const statement = parseStatement(context, VariableKind.GLOBAL);
 
-	if (statement === null) {
-		return null;
+	if (!statement) {
+		return;
 	}
 
 	context.flags = old;
@@ -335,7 +335,7 @@ export function parseExtension(context: ParserContext): Node {
 	const range = context.current().range;
 
 	if (!context.expect(TokenKind.IDENTIFIER)) {
-		return null;
+		return;
 	}
 
 	const name = range.toString();
@@ -349,15 +349,15 @@ export function parseExtension(context: ParserContext): Node {
 		const block = Node.createModifierBlock();
 
 		if (!parseStatements(context, block, VariableKind.GLOBAL) || !context.expect(TokenKind.RIGHT_BRACE)) {
-			return null;
+			return;
 		}
 
-		for (let child = block.firstChild(); child !== null; child = child.nextSibling()) {
+		for (let child = block.firstChild(); child; child = child.nextSibling()) {
 			if (child.kind === NodeKind.VARIABLES) {
-				for (let variable = child.variablesType().nextSibling(); variable !== null; variable = variable.nextSibling()) {
+				for (let variable = child.variablesType().nextSibling(); variable; variable = variable.nextSibling()) {
 					variable.symbol.requiredExtension = name;
 				}
-			} else if (child.symbol !== null) {
+			} else if (child.symbol) {
 				child.symbol.requiredExtension = name;
 			}
 		}
@@ -372,7 +372,7 @@ export function parseExtension(context: ParserContext): Node {
 
 	// Parse a regular extension pragma
 	if (!context.expect(TokenKind.COLON)) {
-		return null;
+		return;
 	}
 
 	const behavior = context.current().range.toString();
@@ -394,7 +394,7 @@ export function parseFor(context: ParserContext): Node {
 	context.pushScope(new Scope(ScopeKind.LOOP, context.scope()));
 
 	if (!context.expect(TokenKind.LEFT_PARENTHESIS)) {
-		return null;
+		return;
 	}
 
 	// Setup
@@ -409,29 +409,29 @@ export function parseFor(context: ParserContext): Node {
 		if (flags !== 0) {
 			type = parseType(context, ParseTypeMode.REPORT_ERRORS);
 
-			if (type === null) {
-				return null;
+			if (!type) {
+				return;
 			}
 		} else {
 			type = parseType(context, ParseTypeMode.IGNORE_ERRORS);
 		}
 
 		// Try to parse a variable
-		if (type !== null) {
+		if (type) {
 			setup = parseAfterType(context, token.range, flags, type, Allow.AVOID_FUNCTIONS, comments);
 
-			if (setup === null) {
-				return null;
+			if (!setup) {
+				return;
 			}
 		} else {
 			setup = pratt.parse(context, Precedence.LOWEST);
 
-			if (setup === null) {
-				return null;
+			if (!setup) {
+				return;
 			}
 
 			if (!context.expect(TokenKind.SEMICOLON)) {
-				return null;
+				return;
 			}
 		}
 	}
@@ -442,12 +442,12 @@ export function parseFor(context: ParserContext): Node {
 	if (!context.eat(TokenKind.SEMICOLON)) {
 		test = pratt.parse(context, Precedence.LOWEST);
 
-		if (test === null) {
-			return null;
+		if (!test) {
+			return;
 		}
 
 		if (!context.expect(TokenKind.SEMICOLON)) {
-			return null;
+			return;
 		}
 	}
 
@@ -457,20 +457,20 @@ export function parseFor(context: ParserContext): Node {
 	if (!context.eat(TokenKind.RIGHT_PARENTHESIS)) {
 		update = pratt.parse(context, Precedence.LOWEST);
 
-		if (update === null) {
-			return null;
+		if (!update) {
+			return;
 		}
 
 		if (!context.expect(TokenKind.RIGHT_PARENTHESIS)) {
-			return null;
+			return;
 		}
 	}
 
 	// Body
 	const body = parseStatement(context, VariableKind.LOCAL);
 
-	if (body === null) {
-		return null;
+	if (!body) {
+		return;
 	}
 
 	context.popScope();
@@ -481,24 +481,24 @@ export function parseIf(context: ParserContext): Node {
 	const token = context.next();
 
 	if (!context.expect(TokenKind.LEFT_PARENTHESIS)) {
-		return null;
+		return;
 	}
 
 	const firstToken = context.current();
 	let test = pratt.parse(context, Precedence.LOWEST);
 
-	if (test === null) {
+	if (!test) {
 		test = Node.createParseError().withRange(context.spanSince(firstToken.range));
 	}
 
 	if (!context.expect(TokenKind.RIGHT_PARENTHESIS)) {
-		return null;
+		return;
 	}
 
 	const yes = parseStatement(context, VariableKind.LOCAL);
 
-	if (yes === null) {
-		return null;
+	if (!yes) {
+		return;
 	}
 
 	let no: Node = null;
@@ -506,8 +506,8 @@ export function parseIf(context: ParserContext): Node {
 	if (context.eat(TokenKind.ELSE)) {
 		no = parseStatement(context, VariableKind.LOCAL);
 
-		if (no === null) {
-			return null;
+		if (!no) {
+			return;
 		}
 	}
 
@@ -519,7 +519,7 @@ export function parseVersion(context: ParserContext): Node {
 	const range = context.current().range;
 
 	if (!context.expect(TokenKind.INT_LITERAL)) {
-		return null;
+		return;
 	}
 
 	return Node.createVersion(+range.toString() | 0).withRange(context.spanSince(token.range));
@@ -530,24 +530,24 @@ export function parseWhile(context: ParserContext): Node {
 	context.pushScope(new Scope(ScopeKind.LOOP, context.scope()));
 
 	if (!context.expect(TokenKind.LEFT_PARENTHESIS)) {
-		return null;
+		return;
 	}
 
 	const firstToken = context.current();
 	let test = pratt.parse(context, Precedence.LOWEST);
 
-	if (test === null) {
+	if (!test) {
 		test = Node.createParseError().withRange(context.spanSince(firstToken.range));
 	}
 
 	if (!context.expect(TokenKind.RIGHT_PARENTHESIS)) {
-		return null;
+		return;
 	}
 
 	const body = parseStatement(context, VariableKind.LOCAL);
 
-	if (body === null) {
-		return null;
+	if (!body) {
+		return;
 	}
 
 	context.popScope();
@@ -562,7 +562,7 @@ export function parseReturn(context: ParserContext): Node {
 		const firstToken = context.current();
 		value = pratt.parse(context, Precedence.LOWEST);
 
-		if (value === null) {
+		if (!value) {
 			value = Node.createParseError().withRange(context.spanSince(firstToken.range));
 		}
 
@@ -594,15 +594,15 @@ export function parsePrecision(context: ParserContext): Node {
 
 		default: {
 			context.unexpectedToken();
-			return null;
+			return;
 		}
 	}
 
 	context.next();
 	const type = parseType(context, ParseTypeMode.REPORT_ERRORS);
 
-	if (type === null) {
-		return null;
+	if (!type) {
+		return;
 	}
 
 	return checkForSemicolon(context, token.range, Node.createPrecision(flag, type));
@@ -612,7 +612,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	const name = context.current().range;
 
 	if (!context.expect(TokenKind.IDENTIFIER)) {
-		return null;
+		return;
 	}
 
 	const symbol = new StructSymbol(context.compilationData.nextSymbolID(), name, name.toString(), new Scope(ScopeKind.STRUCT, context.scope()));
@@ -620,7 +620,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	symbol.comments = comments;
 
 	if (!tryToDefineUniquelyInScope(context, symbol as BaseSymbol)) {
-		return null;
+		return;
 	}
 
 	const range = context.current().range;
@@ -628,7 +628,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	let variables: Node = null;
 
 	if (!context.expect(TokenKind.LEFT_BRACE)) {
-		return null;
+		return;
 	}
 
 	context.pushScope(symbol.scope);
@@ -636,8 +636,8 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	while (!context.peek(TokenKind.RIGHT_BRACE) && !context.peek(TokenKind.END_OF_FILE)) {
 		const statement = parseStatement(context, VariableKind.STRUCT);
 
-		if (statement === null) {
-			return null;
+		if (!statement) {
+			return;
 		}
 
 		if (statement.kind !== NodeKind.VARIABLES) {
@@ -647,11 +647,11 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 
 		block.appendChild(statement);
 
-		for (let child = statement.variablesType().nextSibling(); child !== null; child = child.nextSibling()) {
+		for (let child = statement.variablesType().nextSibling(); child; child = child.nextSibling()) {
 			const variable = child.symbol.asVariable();
 			symbol.variables.push(variable);
 
-			if (variable.value() !== null) {
+			if (variable.value()) {
 				context.log.syntaxErrorStructVariableInitializer(variable.value().range);
 			}
 		}
@@ -660,7 +660,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	context.popScope();
 
 	if (!context.expect(TokenKind.RIGHT_BRACE)) {
-		return null;
+		return;
 	}
 
 	block.withRange(context.spanSince(range));
@@ -672,8 +672,8 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 	if (context.peek(TokenKind.IDENTIFIER)) {
 		variables = parseVariables(0, Node.createType(symbol.resolvedType()), context.next().range, context, comments);
 
-		if (variables === null) {
-			return null;
+		if (!variables) {
+			return;
 		}
 	} else {
 		context.expect(TokenKind.SEMICOLON);
@@ -685,7 +685,7 @@ export function parseStruct(context: ParserContext, flags: number, comments: str
 export function checkForLoopAndSemicolon(context: ParserContext, range: Range, node: Node): Node {
 	let found = false;
 
-	for (let scope = context.scope(); scope !== null; scope = scope.parent) {
+	for (let scope = context.scope(); scope; scope = scope.parent) {
 		if (scope.kind === ScopeKind.LOOP) {
 			found = true;
 			break;
@@ -710,15 +710,15 @@ export function parseAfterType(context: ParserContext, range: Range, flags: Symb
 	if (flags === 0 && !context.peek(TokenKind.IDENTIFIER)) {
 		const value = pratt.resume(context, Precedence.LOWEST, type);
 
-		if (value === null) {
-			return null;
+		if (!value) {
+			return;
 		}
 
 		return checkForSemicolon(context, range, Node.createExpression(value));
 	}
 
 	if (!context.expect(TokenKind.IDENTIFIER)) {
-		return null;
+		return;
 	}
 
 	if (context.eat(TokenKind.LEFT_PARENTHESIS)) {
@@ -727,8 +727,8 @@ export function parseAfterType(context: ParserContext, range: Range, flags: Symb
 
 	const variables = parseVariables(flags, type, name, context, comments);
 
-	if (variables === null) {
-		return null;
+	if (!variables) {
+		return;
 	}
 
 	return variables.withRange(context.spanSince(range));
@@ -738,8 +738,8 @@ export function parseLeadingComments(context: ParserContext): string[] {
 	const firstToken = context.current();
 	const comments = firstToken.comments;
 
-	if (comments === null) {
-		return null;
+	if (!comments) {
+		return;
 	}
 
 	let nextRangeStart = firstToken.range.start;
@@ -771,11 +771,11 @@ export function parseLeadingComments(context: ParserContext): string[] {
 		}
 
 		// Otherwise, count this comment
-		(leadingComments !== null ? leadingComments : (leadingComments = [])).push(comment.toString());
+		(leadingComments ? leadingComments : (leadingComments = [])).push(comment.toString());
 		nextRangeStart = comment.start;
 	}
 
-	if (leadingComments !== null) {
+	if (leadingComments) {
 		leadingComments.reverse();
 	}
 
@@ -852,8 +852,8 @@ export function parseStatement(context: ParserContext, mode: VariableKind): Node
 	if (context.eat(TokenKind.STRUCT)) {
 		const struct = parseStruct(context, flags, comments);
 
-		if (struct === null) {
-			return null;
+		if (!struct) {
+			return;
 		}
 
 		return struct.withRange(context.spanSince(token.range));
@@ -862,22 +862,22 @@ export function parseStatement(context: ParserContext, mode: VariableKind): Node
 	if (flags !== 0) {
 		type = parseType(context, ParseTypeMode.REPORT_ERRORS);
 
-		if (type === null) {
-			return null;
+		if (!type) {
+			return;
 		}
 	} else {
 		type = parseType(context, ParseTypeMode.IGNORE_ERRORS);
 	}
 
-	if (type !== null) {
+	if (type) {
 		return parseAfterType(context, token.range, flags, type, Allow.ALLOW_FUNCTIONS, comments);
 	}
 
 	// Parse an expression
 	const value = pratt.parse(context, Precedence.LOWEST);
 
-	if (value === null) {
-		return null;
+	if (!value) {
+		return;
 	}
 
 	return checkForSemicolon(context, token.range, Node.createExpression(value));
@@ -919,7 +919,7 @@ export function parseInclude(context: ParserContext, parent: Node): boolean {
 	// Must have access to the file system
 	const fileAccess = context.compilationData.fileAccess;
 
-	if (fileAccess === null) {
+	if (!fileAccess) {
 		context.log.semanticErrorIncludeWithoutFileAccess(range);
 		return false;
 	}
@@ -927,7 +927,7 @@ export function parseInclude(context: ParserContext, parent: Node): boolean {
 	// Must be able to read the file
 	const source = fileAccess(path, range.source.name);
 
-	if (source === null) {
+	if (!source) {
 		context.log.semanticErrorIncludeBadPath(range, path);
 		return false;
 	}
@@ -960,7 +960,7 @@ export function parseBlock(context: ParserContext): Node {
 	context.pushScope(new Scope(ScopeKind.LOCAL, context.scope()));
 
 	if (!context.expect(TokenKind.LEFT_BRACE) || !parseStatements(context, block, VariableKind.LOCAL) || !context.expect(TokenKind.RIGHT_BRACE)) {
-		return null;
+		return;
 	}
 
 	context.popScope();
@@ -1139,12 +1139,12 @@ export function parseType(context: ParserContext, mode: ParseTypeMode): Node {
 		case TokenKind.IDENTIFIER: {
 			const symbol = context.scope().find(token.range.toString());
 
-			if (symbol === null || !symbol.isStruct()) {
+			if (!symbol || !symbol.isStruct()) {
 				if (mode === ParseTypeMode.REPORT_ERRORS) {
 					context.unexpectedToken();
 				}
 
-				return null;
+				return;
 			}
 
 			type = symbol.resolvedType();
@@ -1156,7 +1156,7 @@ export function parseType(context: ParserContext, mode: ParseTypeMode): Node {
 				context.unexpectedToken();
 			}
 
-			return null;
+			return;
 		}
 	}
 
@@ -1175,7 +1175,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 	// Takes no arguments
 	if (context.eat(TokenKind.VOID)) {
 		if (!context.expect(TokenKind.RIGHT_PARENTHESIS)) {
-			return null;
+			return;
 		}
 	}
 
@@ -1188,15 +1188,15 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 			// Parse the type
 			const argumentType = parseType(context, ParseTypeMode.REPORT_ERRORS);
 
-			if (argumentType === null) {
-				return null;
+			if (!argumentType) {
+				return;
 			}
 
 			// Parse the identifier
 			const argumentName = context.current().range;
 
 			if (!context.expect(TokenKind.IDENTIFIER)) {
-				return null;
+				return;
 			}
 
 			// Create the argument
@@ -1208,7 +1208,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 
 			// Array size
 			if (!parseArraySize(context, argument)) {
-				return null;
+				return;
 			}
 
 			// Parse another argument?
@@ -1218,7 +1218,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 		}
 
 		if (!context.expect(TokenKind.RIGHT_PARENTHESIS)) {
-			return null;
+			return;
 		}
 	}
 
@@ -1226,10 +1226,10 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 	const hasBlock = !context.eat(TokenKind.SEMICOLON);
 
 	// Merge adjacent function symbols to support overloading
-	if (previous === null) {
+	if (!previous) {
 		originalScope.define(_function as BaseSymbol);
 	} else if (previous.isFunction()) {
-		for (let link = previous.asFunction(); link !== null; link = link.previousOverload) {
+		for (let link = previous.asFunction(); link; link = link.previousOverload) {
 			if (!link.hasSameArgumentTypesAs(_function)) {
 				continue;
 			}
@@ -1246,14 +1246,14 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 			}
 
 			// Defining a function more than once is not allowed
-			else if (link.block !== null || !hasBlock) {
+			else if (link.block || !hasBlock) {
 				context.log.syntaxErrorDuplicateSymbolDefinition(_function.range, link.range);
 			}
 
 			// Merge the function with its forward declaration
 			else {
-				console.assert(link.sibling === null);
-				console.assert(_function.sibling === null);
+				console.assert(!link.sibling);
+				console.assert(!_function.sibling);
 				link.sibling = _function;
 				_function.sibling = link;
 				_function.flags |= link.flags;
@@ -1268,7 +1268,7 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 		originalScope.redefine(_function as BaseSymbol);
 	} else {
 		context.log.syntaxErrorDuplicateSymbolDefinition(name, previous.range);
-		return null;
+		return;
 	}
 
 	if (hasBlock) {
@@ -1277,8 +1277,8 @@ export function parseFunction(flags: SymbolFlags, type: Node, name: Range, conte
 		_function.block = parseBlock(context);
 		context.flags &= old;
 
-		if (_function.block === null) {
-			return null;
+		if (!_function.block) {
+			return;
 		}
 	}
 
@@ -1298,7 +1298,7 @@ export function parseArraySize(context: ParserContext, variable: VariableSymbol)
 
 		variable.arrayCount = pratt.parse(context, Precedence.LOWEST);
 
-		if (variable.arrayCount === null || !context.expect(TokenKind.RIGHT_BRACKET)) {
+		if (!variable.arrayCount || !context.expect(TokenKind.RIGHT_BRACKET)) {
 			return false;
 		}
 
@@ -1310,7 +1310,7 @@ export function parseArraySize(context: ParserContext, variable: VariableSymbol)
 		if (variable.arrayCount.resolvedType !== Type.ERROR) {
 			const folded = fold(variable.arrayCount);
 
-			if (folded === null) {
+			if (!folded) {
 				context.log.syntaxErrorConstantRequired(variable.arrayCount.range);
 			} else if (folded.kind === NodeKind.INT) {
 				const value = folded.asInt();
@@ -1357,7 +1357,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 
 		// Array size
 		if (!parseArraySize(context, symbol)) {
-			return null;
+			return;
 		}
 
 		// Initial value
@@ -1368,7 +1368,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 			const firstToken = context.current();
 			value = pratt.parse(context, Precedence.COMMA);
 
-			if (value === null) {
+			if (!value) {
 				value = Node.createParseError().withRange(context.spanSince(firstToken.range));
 			}
 		} else {
@@ -1395,7 +1395,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 		name = context.current().range;
 
 		if (!context.expect(TokenKind.IDENTIFIER)) {
-			return null;
+			return;
 		}
 	}
 }
@@ -1403,7 +1403,7 @@ export function parseVariables(flags: number, type: Node, name: Range, context: 
 export function tryToDefineUniquelyInScope(context: ParserContext, symbol: BaseSymbol): boolean {
 	const previous = context.scope().symbols.get(symbol.name) ?? null;
 
-	if (previous !== null) {
+	if (previous) {
 		context.log.syntaxErrorDuplicateSymbolDefinition(symbol.range, previous.range);
 		return false;
 	}
@@ -1432,7 +1432,7 @@ export function parseStatements(context: ParserContext, parent: Node, mode: Vari
 
 		const statement = parseStatement(context, mode);
 
-		if (statement === null) {
+		if (!statement) {
 			return false;
 		}
 
@@ -1453,7 +1453,7 @@ export function parseStatements(context: ParserContext, parent: Node, mode: Vari
 }
 
 export function parse(log: Log, tokens: Token[], global: Node, data: CompilerData, scope: Scope, resolver: Resolver): ParseResult {
-	if (pratt === null) {
+	if (!pratt) {
 		pratt = createExpressionParser();
 	}
 

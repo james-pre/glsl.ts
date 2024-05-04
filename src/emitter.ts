@@ -18,7 +18,7 @@ export class Emitter {
 			this._newline = '';
 		}
 
-		let previous: Node = null;
+		let previous: Node;
 
 		for (let child = node.firstChild(); child; child = child.nextSibling()) {
 			if (this._isImportedNode(child)) {
@@ -69,13 +69,13 @@ export class Emitter {
 
 		switch (node.kind) {
 			case NodeKind.BLOCK: {
-				if (!node.hasChildren() && node.parent() !== null) {
+				if (!node.hasChildren() && node.parent()) {
 					this._code += ';';
 				} else {
 					this._code += '{' + this._newline;
 					this._increaseIndent();
 
-					for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
+					for (let child = node.firstChild(); child; child = child.nextSibling()) {
 						this._code += this._indent;
 						this._emitNode(child);
 						this._code += this._newline;
@@ -127,7 +127,7 @@ export class Emitter {
 			case NodeKind.FOR: {
 				this._code += 'for' + this._space + '(';
 
-				if (node.forSetup() !== null) {
+				if (node.forSetup()) {
 					if (node.forSetup().kind === NodeKind.VARIABLES) {
 						this._emitNode(node.forSetup());
 					} else {
@@ -138,14 +138,14 @@ export class Emitter {
 					this._code += ';';
 				}
 
-				if (node.forTest() !== null) {
+				if (node.forTest()) {
 					this._code += this._space;
 					this._emitNodePrecedence(node.forTest(), Precedence.LOWEST);
 				}
 
 				this._code += ';';
 
-				if (node.forUpdate() !== null) {
+				if (node.forUpdate()) {
 					this._code += this._space;
 					this._emitNodePrecedence(node.forUpdate(), Precedence.LOWEST);
 				}
@@ -176,7 +176,7 @@ export class Emitter {
 
 				this._code += ')';
 
-				if (_function.block !== null) {
+				if (_function.block) {
 					this._code += this._space;
 					this._emitNode(_function.block);
 				} else {
@@ -191,7 +191,7 @@ export class Emitter {
 				this._code += ')';
 				this._emitBody(node.ifTrue(), Emitter.After.AFTER_PARENTHESIS);
 
-				if (node.ifFalse() !== null) {
+				if (node.ifFalse()) {
 					this._code += this._newline + this._indent + 'else';
 
 					if (node.ifFalse().kind === NodeKind.IF) {
@@ -216,7 +216,7 @@ export class Emitter {
 				const value = node.returnValue();
 				this._code += 'return';
 
-				if (value !== null) {
+				if (value) {
 					if (!NodeKind_isUnaryPrefix(value.kind)) {
 						this._code += ' ';
 					}
@@ -234,7 +234,7 @@ export class Emitter {
 				this._code += 'struct ' + symbol.name + this._space + '{' + this._newline;
 				this._increaseIndent();
 
-				for (let child1 = node.structBlock().firstChild(); child1 !== null; child1 = child1.nextSibling()) {
+				for (let child1 = node.structBlock().firstChild(); child1; child1 = child1.nextSibling()) {
 					console.assert(child1.kind === NodeKind.VARIABLES);
 					this._code += this._indent;
 					this._emitNode(child1);
@@ -244,10 +244,10 @@ export class Emitter {
 				this._decreaseIndent();
 				this._code += this._indent + '}';
 
-				if (node.structVariables() !== null) {
-					for (let child2 = node.structVariables().variablesType().nextSibling(); child2 !== null; child2 = child2.nextSibling()) {
+				if (node.structVariables()) {
+					for (let child2 = node.structVariables().variablesType().nextSibling(); child2; child2 = child2.nextSibling()) {
 						console.assert(child2.kind === NodeKind.VARIABLE);
-						this._code += child2.previousSibling().previousSibling() === null ? this._space : ',' + this._space;
+						this._code += !child2.previousSibling().previousSibling() ? this._space : ',' + this._space;
 						this._emitVar(child2.symbol.asVariable());
 					}
 				}
@@ -260,9 +260,9 @@ export class Emitter {
 				this._code += SymbolFlags_toString(node.variablesFlags());
 				this._emitNodePrecedence(node.variablesType(), Precedence.LOWEST);
 
-				for (let child3 = node.variablesType().nextSibling(); child3 !== null; child3 = child3.nextSibling()) {
+				for (let child3 = node.variablesType().nextSibling(); child3; child3 = child3.nextSibling()) {
 					const variable = child3.symbol.asVariable();
-					this._code += child3.previousSibling().previousSibling() === null ? ' ' : ',' + this._space;
+					this._code += !child3.previousSibling().previousSibling() ? ' ' : ',' + this._space;
 					this._emitVar(variable);
 				}
 
@@ -318,7 +318,7 @@ export class Emitter {
 	}
 
 	protected _emitCommaSeparatedExpressions(node: Node): void {
-		for (let child = node; child !== null; child = child.nextSibling()) {
+		for (let child = node; child; child = child.nextSibling()) {
 			if (child !== node) {
 				this._code += ',' + this._space;
 			}
@@ -330,13 +330,13 @@ export class Emitter {
 	protected _emitVar(variable: VariableSymbol): void {
 		this._code += variable.name;
 
-		if (variable.arrayCount !== null) {
+		if (variable.arrayCount) {
 			this._code += '[';
 			this._emitNodePrecedence(variable.arrayCount, Precedence.LOWEST);
 			this._code += ']';
 		}
 
-		if (variable.value() !== null) {
+		if (variable.value()) {
 			this._code += this._space + '=' + this._space;
 			this._emitNodePrecedence(variable.value(), Precedence.COMMA);
 		}
@@ -357,7 +357,7 @@ export class Emitter {
 			case NodeKind.DOT: {
 				this._emitNodePrecedence(node.dotTarget(), Precedence.MEMBER);
 				this._code += '.';
-				this._code += node.symbol !== null ? node.symbol.name : node.asString();
+				this._code += node.symbol ? node.symbol.name : node.asString();
 				break;
 			}
 
@@ -614,7 +614,7 @@ export class Emitter {
 	}
 
 	static _isFunctionWithBlock(node: Node): boolean {
-		return node.kind === NodeKind.FUNCTION && node.symbol.asFunction().block !== null;
+		return node.kind === NodeKind.FUNCTION && !!node.symbol.asFunction().block;
 	}
 
 	static floatToString(value: number, mode: Emitter.EmitMode): string {
