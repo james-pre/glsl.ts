@@ -166,15 +166,15 @@ export function compile(log: Log, sources: Source[], options: CompilerOptions): 
 	const resolver = new Resolver(log, data);
 
 	// Parse everything next
-	for (const source1 of sources) {
-		parse(log, source1.tokens, global, data, scope, resolver);
+	for (const source of sources) {
+		parse(log, source.tokens, global, data, scope, resolver);
 	}
 
 	// Then run type checking
 	resolver.resolveGlobal(global);
 
 	if (log.hasErrors()) {
-		return null;
+		return;
 	}
 
 	/* 
