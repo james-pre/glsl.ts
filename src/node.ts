@@ -1,4 +1,4 @@
-import { ExtensionBehavior } from './compiler.js';
+import { ExtensionBehavior, extensionBehaviors } from './compiler.js';
 import { Range } from './range.js';
 import { FunctionSymbol, StructSymbol, SymbolFlags, VariableSymbol, BaseSymbol } from './symbol.js';
 import { Type } from './type.js';
@@ -656,7 +656,7 @@ export class Node {
 	}
 
 	static createExtension(name: string, behavior: ExtensionBehavior): Node {
-		return new Node(NodeKind.EXTENSION).withText(name).withInt(behavior);
+		return new Node(NodeKind.EXTENSION).withText(name).withInt(extensionBehaviors.indexOf(behavior));
 	}
 
 	static createFor(setup: Node, test: Node, update: Node, body: Node): Node {
@@ -821,7 +821,7 @@ export class Node {
 	extensionBehavior(): ExtensionBehavior {
 		console.assert(this.kind === NodeKind.EXTENSION);
 		console.assert(this.childCount() === 0);
-		return this._literal | 0;
+		return extensionBehaviors[this._literal | 0];
 	}
 
 	forSetup(): Node {

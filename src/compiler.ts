@@ -35,12 +35,12 @@ export interface CompilerOptions {
 	fileAccess?: FileAccess;
 }
 
-export const enum ExtensionBehavior {
-	DEFAULT,
-	DISABLE,
-	ENABLE,
-	REQUIRE,
-	WARN,
+export type ExtensionBehavior = 'default' | 'disable' | 'enable' | 'require' | 'warn';
+
+export const extensionBehaviors = ['default', 'disable', 'enable', 'require', 'warn'] as const;
+
+export function isExtensionBehavior(arg: string): arg is ExtensionBehavior {
+	return extensionBehaviors.includes(arg);
 }
 
 export class CompilerData {
@@ -53,7 +53,7 @@ export class CompilerData {
 	}
 
 	public extensionBehavior(name: string): ExtensionBehavior {
-		return this.currentExtensions.get(name) ?? ExtensionBehavior.DEFAULT;
+		return this.currentExtensions.get(name) ?? 'default';
 	}
 
 	public constructor(public fileAccess: FileAccess) {}

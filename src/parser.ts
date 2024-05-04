@@ -1,4 +1,4 @@
-import { CompilerData, ExtensionBehavior } from './compiler.js';
+import { CompilerData, isExtensionBehavior } from './compiler.js';
 import { fold } from './folder.js';
 import { Log } from './log.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isUnaryPostfix, NodeKind_isUnaryPrefix } from './node.js';
@@ -27,6 +27,8 @@ export class ParseResult {
 		this.includes = includes;
 	}
 }
+
+export let pratt: Pratt = null;
 
 export function typeParselet(type: Type): (v0: ParserContext, v1: Token) => Node {
 	return (context: ParserContext, token: Token) => {
@@ -151,7 +153,7 @@ export function createExpressionParser(): Pratt {
 		}
 
 		// Check extension usage
-		if (symbol.requiredExtension !== null && context.compilationData.extensionBehavior(symbol.requiredExtension) === ExtensionBehavior.DISABLE) {
+		if (symbol.requiredExtension && context.compilationData.extensionBehavior(symbol.requiredExtension) == 'disable') {
 			context.log.syntaxErrorDisabledExtension(token.range, name, symbol.requiredExtension);
 		}
 
@@ -325,6 +327,9 @@ export function parseExportOrImport(context: ParserContext): Node {
 	return statement;
 }
 
+// From https://www.khronos.org/registry/webgl/extensions/
+const _knownWebGLExtensions = new Set(['GL_OES_standard_derivatives', 'GL_EXT_frag_depth', 'GL_EXT_draw_buffers', 'GL_EXT_shader_texture_lod']);
+
 export function parseExtension(context: ParserContext): Node {
 	const token = context.next();
 	const range = context.current().range;
@@ -338,7 +343,7 @@ export function parseExtension(context: ParserContext): Node {
 	// Parse an extension block (a non-standard addition)
 	if (context.eat(TokenKind.LEFT_BRACE)) {
 		if (!context.compilationData.currentExtensions.has(name)) {
-			context.compilationData.currentExtensions.set(name, ExtensionBehavior.DEFAULT); // Silence warnings about this name
+			context.compilationData.currentExtensions.set(name, 'default'); // Silence warnings about this name
 		}
 
 		const block = Node.createModifierBlock();
@@ -370,17 +375,16 @@ export function parseExtension(context: ParserContext): Node {
 		return null;
 	}
 
-	const text = context.current().range.toString();
+	const behavior = context.current().range.toString();
 
-	if (!_extensionBehaviors.has(text)) {
+	if (!isExtensionBehavior(behavior)) {
 		context.unexpectedToken();
-		return null;
+		return;
 	}
 
 	context.next();
 
 	// Activate or deactivate the extension
-	const behavior = _extensionBehaviors.get(text);
 	context.compilationData.currentExtensions.set(name, behavior);
 	return Node.createExtension(name, behavior).withRange(context.spanSince(token.range)).withInternalRange(range);
 }
@@ -1463,17 +1467,3 @@ export function parse(log: Log, tokens: Token[], global: Node, data: CompilerDat
 
 	return new ParseResult(context.includes);
 }
-
-export let pratt: Pratt = null;
-export const _extensionBehaviors = new Map();
-_extensionBehaviors.set('disable', ExtensionBehavior.DISABLE);
-_extensionBehaviors.set('enable', ExtensionBehavior.ENABLE);
-_extensionBehaviors.set('require', ExtensionBehavior.REQUIRE);
-_extensionBehaviors.set('warn', ExtensionBehavior.WARN);
-
-// From https://www.khronos.org/registry/webgl/extensions/
-export const _knownWebGLExtensions = new Map();
-_knownWebGLExtensions.set('GL_OES_standard_derivatives', 0);
-_knownWebGLExtensions.set('GL_EXT_frag_depth', 0);
-_knownWebGLExtensions.set('GL_EXT_draw_buffers', 0);
-_knownWebGLExtensions.set('GL_EXT_shader_texture_lod', 0);
