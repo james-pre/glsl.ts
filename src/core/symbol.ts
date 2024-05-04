@@ -1,10 +1,10 @@
-import { assert, List_get2 } from '../native-js.js';
 import { Node } from './node.js';
 import { Range } from './range.js';
 import { Scope } from './scope.js';
 import { Type } from './type.js';
 
 export enum SymbolFlags {
+	NULL = 0,
 	// Keyword modifiers
 	ATTRIBUTE = 1,
 	CONST,
@@ -80,17 +80,17 @@ export class _Symbol {
 	}
 
 	asStruct(): StructSymbol {
-		assert(this.isStruct());
+		console.assert(this.isStruct());
 		return this as unknown as StructSymbol;
 	}
 
 	asFunction(): FunctionSymbol {
-		assert(this.isFunction());
+		console.assert(this.isFunction());
 		return this as unknown as FunctionSymbol;
 	}
 
 	asVariable(): VariableSymbol {
-		assert(this.isVariable());
+		console.assert(this.isVariable());
 		return this as unknown as VariableSymbol;
 	}
 
@@ -138,8 +138,8 @@ export class FunctionSymbol extends _Symbol {
 			return false;
 		}
 
-		for (let i = 0, count = this._arguments.length; i < count; i = i + 1) {
-			if (List_get2(this._arguments, i).type.resolvedType !== List_get2(_function._arguments, i).type.resolvedType) {
+		for (let i = 0, count = this._arguments.length; i < count; i++) {
+			if (this._arguments[i].type.resolvedType !== _function._arguments[i].type.resolvedType) {
 				return false;
 			}
 		}

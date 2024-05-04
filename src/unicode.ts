@@ -1,5 +1,3 @@
-import { StringBuilder, string_get13 } from './native-js.js';
-
 export class StringIterator {
 	value: string;
 	index: number;
@@ -18,7 +16,8 @@ export class StringIterator {
 			return -1;
 		}
 
-		let a = string_get13(this.value, (this.index = this.index + 1) + -1);
+		this.index++;
+		const a = this.value.charCodeAt(this.index - 1);
 
 		if ((a & 64512) !== 55296) {
 			return a;
@@ -28,7 +27,8 @@ export class StringIterator {
 			return -1;
 		}
 
-		let b = string_get13(this.value, (this.index = this.index + 1) + -1);
+		this.index++;
+		const b = this.value.charCodeAt(this.index - 1);
 		return (a << 10) + b + (65536 - (55296 << 10) - 56320);
 	}
 
@@ -40,13 +40,13 @@ export class StringIterator {
 }
 
 export function string_fromCodePoints(codePoints: Array<number>): string {
-	let builder = new StringBuilder();
+	let string = '';
 
 	for (const codePoint of codePoints) {
-		builder.buffer += string_fromCodePoint(codePoint);
+		string += string_fromCodePoint(codePoint);
 	}
 
-	return builder.buffer;
+	return string;
 }
 
 export function string_fromCodePoint(codePoint: number): string {

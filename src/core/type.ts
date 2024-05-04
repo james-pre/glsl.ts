@@ -1,4 +1,3 @@
-import { assert, IntMap_get4, IntMap_set3 } from '../native-js.js';
 import { StructSymbol, _Symbol } from './symbol.js';
 
 export class Type {
@@ -57,16 +56,17 @@ export class Type {
 
 	// A count of "0" means an array with an unknown size
 	arrayType(count: number): Type {
-		assert(count >= 0);
+		console.assert(count >= 0);
 
-		if (this._arrayTypes === null) {
+		if (!this._arrayTypes) {
 			this._arrayTypes = new Map();
 		}
 
-		let arrayType = IntMap_get4(this._arrayTypes, count, null);
+		let arrayType = this._arrayTypes.get(count);
 
-		if (arrayType === null) {
-			IntMap_set3(this._arrayTypes, count, (arrayType = new Type(null, this, count)));
+		if (!arrayType) {
+			arrayType = new Type(null, this, count);
+			this._arrayTypes.set(count, arrayType);
 			arrayType.containsArray = true;
 			arrayType.containsSampler = this.containsSampler;
 		}
@@ -84,7 +84,7 @@ export class Type {
 
 	// For index expressions where "0 <= index < indexCount" (so indexCount == 0 means this type is un-indexable)
 	indexCount(): number {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.BVEC2 || value === Type.VEC2 || value === Type.IVEC2 || value === Type.MAT2) {
 			return 2;
@@ -99,7 +99,7 @@ export class Type {
 
 	// For index expressions
 	indexType(): Type {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.BVEC2 || value === Type.BVEC3 || value === Type.BVEC4) {
 			return Type.BOOL;
@@ -120,7 +120,7 @@ export class Type {
 
 	// For constructor expressions, returns the number of required elements
 	componentCount(): number {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.BOOL || value === Type.FLOAT || value === Type.INT) {
 			return 1;
@@ -141,7 +141,7 @@ export class Type {
 
 	// For constructor expressions, returns the base element type corresponding to componentCount
 	componentType(): Type {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.BOOL || value === Type.BVEC2 || value === Type.BVEC3 || value === Type.BVEC4) {
 			return Type.BOOL;
@@ -156,7 +156,7 @@ export class Type {
 
 	// Vector types are the only ones with swizzles
 	isVector(): boolean {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (
 			value === Type.BVEC2 ||
@@ -176,7 +176,7 @@ export class Type {
 	}
 
 	isMatrix(): boolean {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.MAT2 || value === Type.MAT3 || value === Type.MAT4) {
 			return true;
@@ -186,7 +186,7 @@ export class Type {
 	}
 
 	hasIntComponents(): boolean {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.INT || value === Type.IVEC2 || value === Type.IVEC3 || value === Type.IVEC4) {
 			return true;
@@ -196,7 +196,7 @@ export class Type {
 	}
 
 	hasFloatComponents(): boolean {
-		let value: Type = this;
+		const value: Type = this;
 
 		if (value === Type.FLOAT || value === Type.VEC2 || value === Type.VEC3 || value === Type.VEC4) {
 			return true;

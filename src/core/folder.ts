@@ -1,22 +1,21 @@
-import { assert, List_get2, string_get5, List_first } from '../native-js.js';
-import { RELEASE } from '../native.js';
-
 import { Node, NodeKind } from './node.js';
 import { strings, type } from './swizzle.js';
 import { VariableKind } from './symbol.js';
 import { Type } from './type.js';
 
+const __RELEASE__ = false;
+
 export function fold(node: Node): Node {
-	if (RELEASE) {
+	if (__RELEASE__) {
 		return _fold(node);
 	}
 
 	// Run sanity checks in debug mode
 	else {
-		let folded = _fold(node);
+		const folded = _fold(node);
 
 		if (folded !== null) {
-			assert(folded.parent() === null);
+			console.assert(folded.parent() === null);
 
 			if (folded.kind !== NodeKind.UNKNOWN_CONSTANT) {
 				_check(folded);
@@ -30,63 +29,63 @@ export function fold(node: Node): Node {
 export function _check(node: Node): void {
 	switch (node.kind) {
 		case NodeKind.INT: {
-			assert(node.resolvedType === Type.INT && !node.hasChildren());
+			console.assert(node.resolvedType === Type.INT && !node.hasChildren());
 			break;
 		}
 
 		case NodeKind.BOOL: {
-			assert(node.resolvedType === Type.BOOL && !node.hasChildren());
+			console.assert(node.resolvedType === Type.BOOL && !node.hasChildren());
 			break;
 		}
 
 		case NodeKind.FLOAT: {
-			assert(node.resolvedType === Type.FLOAT && !node.hasChildren());
+			console.assert(node.resolvedType === Type.FLOAT && !node.hasChildren());
 			break;
 		}
 
 		case NodeKind.CALL: {
-			let target = node.callTarget();
-			assert(target.kind === NodeKind.TYPE);
-			assert(target.resolvedType === node.resolvedType);
-			let componentType = target.resolvedType.componentType();
-			let componentCount = target.resolvedType.componentCount();
+			const target = node.callTarget();
+			console.assert(target.kind === NodeKind.TYPE);
+			console.assert(target.resolvedType === node.resolvedType);
+			const componentType = target.resolvedType.componentType();
+			const componentCount = target.resolvedType.componentCount();
 
 			// Native component types
 			if (componentType !== null) {
-				assert(node.childCount() === 1 + componentCount);
-				assert(target.resolvedType !== Type.INT && target.resolvedType !== Type.BOOL && target.resolvedType !== Type.FLOAT);
+				console.assert(node.childCount() === 1 + componentCount);
+				console.assert(target.resolvedType !== Type.INT && target.resolvedType !== Type.BOOL && target.resolvedType !== Type.FLOAT);
 
 				for (let child = target.nextSibling(); child !== null; child = child.nextSibling()) {
-					assert(child.resolvedType === componentType);
-					assert(child.kind !== NodeKind.CALL);
+					console.assert(child.resolvedType === componentType);
+					console.assert(child.kind !== NodeKind.CALL);
 					_check(child);
 				}
 			}
 
 			// User-defined structs
 			else {
-				let struct = target.resolvedType.symbol.asStruct();
+				const struct = target.resolvedType.symbol.asStruct();
 				let i = 0;
-				assert(node.childCount() === 1 + struct.variables.length);
+				console.assert(node.childCount() === 1 + struct.variables.length);
 
 				for (let child1 = target.nextSibling(); child1 !== null; child1 = child1.nextSibling()) {
-					assert(child1.resolvedType === List_get2(struct.variables, i).type.resolvedType);
+					console.assert(child1.resolvedType === struct.variables[i].type.resolvedType);
 					_check(child1);
-					i = i + 1;
+					i++;
 				}
 			}
 			break;
 		}
 
 		default: {
-			assert(false);
+			console.assert(false);
 			break;
 		}
 	}
 }
 
 export function _fold(node: Node): Node {
-	assert(node.resolvedType !== null);
+	console.assert(node.resolvedType !== null);
 
 	if (node.resolvedType === Type.ERROR) {
 		return null;
@@ -246,7 +245,7 @@ export function _fold(node: Node): Node {
 }
 
 export function _foldName(node: Node): Node {
-	let symbol = node.symbol;
+	const symbol = node.symbol;
 
 	if (symbol !== null && symbol.isConst()) {
 		if (symbol.constantValue !== null) {
@@ -263,7 +262,7 @@ export function _foldName(node: Node): Node {
 
 export function _foldSequence(node: Node): Node {
 	for (let child = node.firstChild(); child !== null; child = child.nextSibling()) {
-		let folded = fold(child);
+		const folded = fold(child);
 
 		if (folded === null || child === node.lastChild()) {
 			return folded;
@@ -274,9 +273,9 @@ export function _foldSequence(node: Node): Node {
 }
 
 export function _foldHook(node: Node): Node {
-	let foldedTest = fold(node.hookTest());
-	let foldedTrue = fold(node.hookTrue());
-	let foldedFalse = fold(node.hookFalse());
+	const foldedTest = fold(node.hookTest());
+	const foldedTrue = fold(node.hookTrue());
+	const foldedFalse = fold(node.hookFalse());
 
 	if (foldedTest !== null && foldedTest.kind === NodeKind.BOOL && foldedTrue !== null && foldedFalse !== null) {
 		return foldedTest.asBool() ? foldedTrue : foldedFalse;
@@ -286,29 +285,29 @@ export function _foldHook(node: Node): Node {
 }
 
 export function _foldDot(node: Node): Node {
-	let folded = fold(node.dotTarget());
+	const folded = fold(node.dotTarget());
 
 	if (folded !== null && folded.kind === NodeKind.CALL) {
-		let resolvedType = folded.resolvedType;
-		let name = node.asString();
+		const resolvedType = folded.resolvedType;
+		const name = node.asString();
 
 		// Evaluate a swizzle
 		if (resolvedType.isVector()) {
-			let count = name.length;
-			let componentCount = resolvedType.componentCount();
+			const count = name.length;
+			const componentCount = resolvedType.componentCount();
 
 			// Find the swizzle set
 			for (const set of strings(componentCount)) {
-				if (set.indexOf(string_get5(name, 0)) !== -1) {
+				if (set.indexOf(name[0]) !== -1) {
 					if (count === 1) {
 						return folded.childAt(1 + set.indexOf(name)).remove();
 					}
 
-					let swizzleType = type(resolvedType.componentType(), count);
-					let result = Node.createConstructorCall(swizzleType);
+					const swizzleType = type(resolvedType.componentType(), count);
+					const result = Node.createConstructorCall(swizzleType);
 
-					for (let i = 0, count1 = count; i < count1; i = i + 1) {
-						result.appendChild(folded.childAt(1 + set.indexOf(string_get5(name, i))).clone());
+					for (let i = 0, count1 = count; i < count1; i++) {
+						result.appendChild(folded.childAt(1 + set.indexOf(name[i]))).clone();
 					}
 
 					return result;
@@ -318,13 +317,13 @@ export function _foldDot(node: Node): Node {
 
 		// Evaluate a struct field
 		else if (resolvedType.symbol !== null && resolvedType.symbol.isStruct()) {
-			let symbol = resolvedType.symbol.asStruct();
-			let variables = symbol.variables;
-			assert(folded.childCount() === 1 + variables.length);
+			const symbol = resolvedType.symbol.asStruct();
+			const variables = symbol.variables;
+			console.assert(folded.childCount() === 1 + variables.length);
 
 			// Extract the field from the constructor call
 			for (let i1 = 0, count2 = variables.length; i1 < count2; i1 = i1 + 1) {
-				let variable = List_get2(variables, i1);
+				const variable = variables[i1];
 
 				if (variable.name === name) {
 					return folded.childAt(1 + i1).remove();
@@ -337,16 +336,16 @@ export function _foldDot(node: Node): Node {
 }
 
 export function _foldIndex(node: Node): Node {
-	let foldedLeft = fold(node.binaryLeft());
-	let foldedRight = fold(node.binaryRight());
+	const foldedLeft = fold(node.binaryLeft());
+	const foldedRight = fold(node.binaryRight());
 
 	// Both children must also be constants
 	if (foldedLeft !== null && foldedLeft.kind === NodeKind.CALL && foldedRight !== null && foldedRight.kind === NodeKind.INT) {
-		let type = foldedLeft.resolvedType;
+		const type = foldedLeft.resolvedType;
 
 		if (type.isVector()) {
-			let indexCount = type.indexCount();
-			let index = foldedRight.asInt();
+			const indexCount = type.indexCount();
+			const index = foldedRight.asInt();
 
 			// The index must be in range
 			if (0 <= index && index < indexCount) {
@@ -356,17 +355,17 @@ export function _foldIndex(node: Node): Node {
 
 		// Indexing into a matrix creates a vector
 		else if (type.isMatrix()) {
-			let indexCount1 = type.indexCount();
-			let index1 = foldedRight.asInt();
-			assert(foldedLeft.childCount() === 1 + indexCount1 * indexCount1);
+			const indexCount1 = type.indexCount();
+			const index1 = foldedRight.asInt();
+			console.assert(foldedLeft.childCount() === 1 + indexCount1 * indexCount1);
 
 			// The index must be in range
 			if (0 <= index1 && index1 < indexCount1) {
-				let indexType = type.indexType();
-				let result = Node.createConstructorCall(indexType);
-				let before = foldedLeft.childAt(index1 * indexCount1);
+				const indexType = type.indexType();
+				const result = Node.createConstructorCall(indexType);
+				const before = foldedLeft.childAt(index1 * indexCount1);
 
-				for (let i = 0, count = indexCount1; i < count; i = i + 1) {
+				for (let i = 0, count = indexCount1; i < count; i++) {
 					result.appendChild(before.nextSibling().remove());
 				}
 
@@ -379,17 +378,17 @@ export function _foldIndex(node: Node): Node {
 }
 
 export function _foldCall(node: Node): Node {
-	let target = node.callTarget();
+	const target = node.callTarget();
 
 	// Only constructor calls are considered constants
 	if (target.kind !== NodeKind.TYPE) {
 		return null;
 	}
 
-	let type = target.resolvedType;
-	let componentType = type.componentType();
+	const type = target.resolvedType;
+	const componentType = type.componentType();
 	let matrixStride = 0;
-	let _arguments: Array<Node> = [];
+	const _arguments: Array<Node> = [];
 	let count = 0;
 
 	// Make sure all arguments are constants
@@ -403,7 +402,7 @@ export function _foldCall(node: Node): Node {
 		// Expand values inline from constructed native types
 		if (folded.kind === NodeKind.CALL && componentType !== null && folded.callTarget().resolvedType.componentType() !== null) {
 			for (let value = folded.callTarget().nextSibling(); value !== null; value = value.nextSibling()) {
-				let casted = _castValue(componentType, value);
+				const casted = _castValue(componentType, value);
 
 				if (casted === null) {
 					return null;
@@ -453,7 +452,7 @@ export function _foldCall(node: Node): Node {
 }
 
 export function _floatValues(node: Node): Array<number> {
-	let values: Array<number> = [];
+	const values: Array<number> = [];
 
 	for (let child = node.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
 		values.push(child.asFloat());
@@ -464,24 +463,24 @@ export function _floatValues(node: Node): Array<number> {
 
 export function _foldMultiply(node: Node): Node {
 	let ref: Node;
-	let left = fold(node.binaryLeft());
-	let right = fold(node.binaryRight());
-	let leftType: Type = left !== null ? left.resolvedType : null;
-	let rightType: Type = right !== null ? right.resolvedType : null;
+	const left = fold(node.binaryLeft());
+	const right = fold(node.binaryRight());
+	const leftType: Type = left !== null ? left.resolvedType : null;
+	const rightType: Type = right !== null ? right.resolvedType : null;
 
 	if (left !== null && right !== null) {
 		// Vector-matrix multiply
 		if ((leftType === Type.VEC2 && rightType === Type.MAT2) || (leftType === Type.VEC3 && rightType === Type.MAT3) || (leftType === Type.VEC4 && rightType === Type.MAT4)) {
-			let stride = leftType.indexCount();
-			let result = Node.createConstructorCall(leftType);
-			let leftValues = _floatValues(left);
-			let rightValues = _floatValues(right);
+			const stride = leftType.indexCount();
+			const result = Node.createConstructorCall(leftType);
+			const leftValues = _floatValues(left);
+			const rightValues = _floatValues(right);
 
-			for (let i = 0, count1 = stride; i < count1; i = i + 1) {
+			for (let i = 0, count1 = stride; i < count1; i++) {
 				let total = 0;
 
 				for (let col = 0, count = stride; col < count; col = col + 1) {
-					total += List_get2(leftValues, col) * List_get2(rightValues, col + i * stride);
+					total += leftValues[col] * rightValues[col + i * stride];
 				}
 
 				result.appendChild(Node.createFloat(total));
@@ -492,16 +491,16 @@ export function _foldMultiply(node: Node): Node {
 
 		// Matrix-vector multiply
 		if ((leftType === Type.MAT2 && rightType === Type.VEC2) || (leftType === Type.MAT3 && rightType === Type.VEC3) || (leftType === Type.MAT4 && rightType === Type.VEC4)) {
-			let stride1 = leftType.indexCount();
-			let result1 = Node.createConstructorCall(rightType);
-			let leftValues1 = _floatValues(left);
-			let rightValues1 = _floatValues(right);
+			const stride1 = leftType.indexCount();
+			const result1 = Node.createConstructorCall(rightType);
+			const leftValues1 = _floatValues(left);
+			const rightValues1 = _floatValues(right);
 
 			for (let i1 = 0, count3 = stride1; i1 < count3; i1 = i1 + 1) {
 				let total1 = 0;
 
 				for (let row = 0, count2 = stride1; row < count2; row = row + 1) {
-					total1 += List_get2(leftValues1, i1 + row * stride1) * List_get2(rightValues1, row);
+					total1 += leftValues1[i1 + row * stride1] * rightValues1[row];
 				}
 
 				result1.appendChild(Node.createFloat(total1));
@@ -512,17 +511,17 @@ export function _foldMultiply(node: Node): Node {
 
 		// Matrix-matrix multiply
 		if (leftType.isMatrix() && rightType === leftType) {
-			let stride2 = leftType.indexCount();
-			let result2 = Node.createConstructorCall(leftType);
-			let leftValues2 = _floatValues(left);
-			let rightValues2 = _floatValues(right);
+			const stride2 = leftType.indexCount();
+			const result2 = Node.createConstructorCall(leftType);
+			const leftValues2 = _floatValues(left);
+			const rightValues2 = _floatValues(right);
 
 			for (let row1 = 0, count6 = stride2; row1 < count6; row1 = row1 + 1) {
 				for (let col1 = 0, count5 = stride2; col1 < count5; col1 = col1 + 1) {
 					let total2 = 0;
 
 					for (let i2 = 0, count4 = stride2; i2 < count4; i2 = i2 + 1) {
-						total2 += List_get2(leftValues2, col1 + i2 * stride2) * List_get2(rightValues2, i2 + row1 * stride2);
+						total2 += leftValues2[col1 + i2 * stride2] * rightValues2[i2 + row1 * stride2];
 					}
 
 					result2.appendChild(Node.createFloat(total2));
@@ -568,7 +567,7 @@ export function _castValue(type: Type, node: Node): Node {
 		}
 	}
 
-	let value1 = type;
+	const value1 = type;
 
 	if (value1 === Type.BOOL) {
 		return Node.createBool(!!value);
@@ -582,26 +581,26 @@ export function _castValue(type: Type, node: Node): Node {
 }
 
 export function _foldComponentConstructor(_arguments: Array<Node>, type: Type, matrixStride: number): Node {
-	let componentCount = type.componentCount();
-	let componentType = type.componentType();
-	let node = Node.createConstructorCall(type);
-	assert(componentCount > 0);
+	const componentCount = type.componentCount();
+	const componentType = type.componentType();
+	const node = Node.createConstructorCall(type);
+	console.assert(componentCount > 0);
 
 	// Passing a single component as an argument always works
 	if (_arguments.length === 1) {
-		let argument = List_first(_arguments);
+		const argument = _arguments[0];
 
 		if (argument.resolvedType !== componentType) {
 			return null;
 		}
 
 		// When doing this with a matrix, only the diagonal is filled
-		let isMatrix = type.isMatrix();
-		let stride = type.indexCount();
+		const isMatrix = type.isMatrix();
+		const stride = type.indexCount();
 
 		// Fill the target by repeating the single component
-		for (let i = 0, count = componentCount; i < count; i = i + 1) {
-			let isOffMatrixDiagonal = isMatrix && i % (stride + 1) !== 0;
+		for (let i = 0, count = componentCount; i < count; i++) {
+			const isOffMatrixDiagonal = isMatrix && i % (stride + 1) !== 0;
 			node.appendChild(isOffMatrixDiagonal ? Node.createFloat(0) : argument.clone());
 		}
 	}
@@ -611,13 +610,13 @@ export function _foldComponentConstructor(_arguments: Array<Node>, type: Type, m
 	// in the argument will be initialized from there. All other components will
 	// be initialized to the identity matrix.
 	else if (matrixStride !== 0) {
-		let stride1 = type.indexCount();
-		assert(type.isMatrix());
-		assert(stride1 * stride1 === componentCount);
+		const stride1 = type.indexCount();
+		console.assert(type.isMatrix());
+		console.assert(stride1 * stride1 === componentCount);
 
 		for (let row = 0, count2 = stride1; row < count2; row = row + 1) {
 			for (let col = 0, count1 = stride1; col < count1; col = col + 1) {
-				node.appendChild(col < matrixStride && row < matrixStride ? List_get2(_arguments, col + row * matrixStride) : Node.createFloat(col === row ? 1 : 0));
+				node.appendChild(col < matrixStride && row < matrixStride ? _arguments[col + row * matrixStride] : Node.createFloat(col === row ? 1 : 0));
 			}
 		}
 	}
@@ -631,7 +630,7 @@ export function _foldComponentConstructor(_arguments: Array<Node>, type: Type, m
 
 		// The constructed value is represented as a constructor call
 		for (let i1 = 0, count3 = componentCount; i1 < count3; i1 = i1 + 1) {
-			let argument1 = List_get2(_arguments, i1);
+			const argument1 = _arguments[i1];
 
 			// All casts should be resolved by this point
 			if (argument1.resolvedType !== componentType) {
@@ -651,8 +650,8 @@ export function _foldComponentConstructor(_arguments: Array<Node>, type: Type, m
 }
 
 export function _foldStruct(_arguments: Array<Node>, type: Type): Node {
-	let variables = type.symbol.asStruct().variables;
-	let node = Node.createConstructorCall(type);
+	const variables = type.symbol.asStruct().variables;
+	const node = Node.createConstructorCall(type);
 
 	// Structs can only be constructed with the exact number of arguments
 	if (_arguments.length !== variables.length) {
@@ -660,23 +659,23 @@ export function _foldStruct(_arguments: Array<Node>, type: Type): Node {
 	}
 
 	// The constructed value is represented as a constructor call
-	for (let i = 0, count = _arguments.length; i < count; i = i + 1) {
-		if (List_get2(_arguments, i).resolvedType !== List_get2(variables, i).type.resolvedType) {
+	for (let i = 0, count = _arguments.length; i < count; i++) {
+		if (_arguments[i].resolvedType !== variables[i].type.resolvedType) {
 			return null;
 		}
 
-		node.appendChild(List_get2(_arguments, i));
+		node.appendChild(_arguments[i]);
 	}
 
 	return node;
 }
 
 export function _foldBinaryEquality(node: Node): Node {
-	let left = fold(node.binaryLeft());
-	let right = fold(node.binaryRight());
+	const left = fold(node.binaryLeft());
+	const right = fold(node.binaryRight());
 
 	if (left !== null && right !== null) {
-		let value = left.looksTheSameAs(right);
+		const value = left.looksTheSameAs(right);
 		return Node.createBool(node.kind === NodeKind.EQUAL ? value : !value);
 	}
 
@@ -687,10 +686,10 @@ export function _foldBinaryEquality(node: Node): Node {
 
 export function _foldComponentwiseUnary(node: Node, componentType: Type, argumentKind: NodeKind, op: (v0: Node) => Node): Node {
 	if (node.kind === NodeKind.CALL && node.callTarget().kind === NodeKind.TYPE && node.callTarget().resolvedType.componentType() === componentType) {
-		let result = Node.createConstructorCall(node.callTarget().resolvedType);
+		const result = Node.createConstructorCall(node.callTarget().resolvedType);
 
 		for (let child = node.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
-			let folded = fold(child);
+			const folded = fold(child);
 
 			if (folded === null || folded.kind !== argumentKind) {
 				return null;
@@ -728,18 +727,18 @@ export function _foldInt1(node: Node, op: (v0: number) => number): Node {
 /////////////////////////////////////////////////////////////////////////////////
 
 export function _foldComponentwiseBinary(left: Node, right: Node, componentType: Type, argumentKind: NodeKind, op: (v0: Node, v1: Node) => Node): Node {
-	let leftHasComponents = left.kind === NodeKind.CALL && left.callTarget().kind === NodeKind.TYPE && left.callTarget().resolvedType.componentType() === componentType;
-	let rightHasComponents = right.kind === NodeKind.CALL && right.callTarget().kind === NodeKind.TYPE && right.callTarget().resolvedType.componentType() === componentType;
+	const leftHasComponents = left.kind === NodeKind.CALL && left.callTarget().kind === NodeKind.TYPE && left.callTarget().resolvedType.componentType() === componentType;
+	const rightHasComponents = right.kind === NodeKind.CALL && right.callTarget().kind === NodeKind.TYPE && right.callTarget().resolvedType.componentType() === componentType;
 
 	// Vector-vector binary operator
 	if (leftHasComponents && rightHasComponents && right.resolvedType === left.resolvedType) {
-		let result = Node.createConstructorCall(left.resolvedType);
+		const result = Node.createConstructorCall(left.resolvedType);
 		let leftChild = left.callTarget().nextSibling();
 		let rightChild = right.callTarget().nextSibling();
 
 		while (leftChild !== null && rightChild !== null) {
-			let foldedLeft = fold(leftChild);
-			let foldedRight = fold(rightChild);
+			const foldedLeft = fold(leftChild);
+			const foldedRight = fold(rightChild);
 
 			if (foldedLeft === null || foldedLeft.kind !== argumentKind || foldedRight === null || foldedRight.kind !== argumentKind) {
 				return null;
@@ -757,10 +756,10 @@ export function _foldComponentwiseBinary(left: Node, right: Node, componentType:
 
 	// Vector-scalar binary operator
 	else if (leftHasComponents && right.kind === argumentKind) {
-		let result1 = Node.createConstructorCall(left.resolvedType);
+		const result1 = Node.createConstructorCall(left.resolvedType);
 
 		for (let child = left.callTarget().nextSibling(); child !== null; child = child.nextSibling()) {
-			let folded = fold(child);
+			const folded = fold(child);
 
 			if (folded === null || folded.kind !== argumentKind) {
 				return null;
@@ -774,10 +773,10 @@ export function _foldComponentwiseBinary(left: Node, right: Node, componentType:
 
 	// Scalar-vector binary operator
 	else if (left.kind === argumentKind && rightHasComponents) {
-		let result2 = Node.createConstructorCall(right.resolvedType);
+		const result2 = Node.createConstructorCall(right.resolvedType);
 
 		for (let child1 = right.callTarget().nextSibling(); child1 !== null; child1 = child1.nextSibling()) {
-			let folded1 = fold(child1);
+			const folded1 = fold(child1);
 
 			if (folded1 === null || folded1.kind !== argumentKind) {
 				return null;
@@ -815,7 +814,7 @@ export function _foldInt2(left: Node, right: Node, op: (v0: number, v1: number) 
 /////////////////////////////////////////////////////////////////////////////////
 
 export function _foldUnaryBool(node: Node, op: (v0: boolean) => boolean): Node {
-	let value = fold(node.unaryValue());
+	const value = fold(node.unaryValue());
 
 	if (value !== null && value.kind === NodeKind.BOOL) {
 		return Node.createBool(op(value.asBool()));
@@ -826,7 +825,7 @@ export function _foldUnaryBool(node: Node, op: (v0: boolean) => boolean): Node {
 
 export function _foldUnaryFloatOrInt(node: Node, floatOp: (v0: number) => number, intOp: (v0: number) => number): Node {
 	let ref: Node;
-	let value = fold(node.unaryValue());
+	const value = fold(node.unaryValue());
 
 	if (value !== null) {
 		return (ref = _foldFloat1(value, floatOp)) !== null ? ref : _foldInt1(value, intOp);
@@ -838,8 +837,8 @@ export function _foldUnaryFloatOrInt(node: Node, floatOp: (v0: number) => number
 /////////////////////////////////////////////////////////////////////////////////
 
 export function _foldBinaryBool(node: Node, op: (v0: boolean, v1: boolean) => boolean): Node {
-	let left = fold(node.binaryLeft());
-	let right = fold(node.binaryRight());
+	const left = fold(node.binaryLeft());
+	const right = fold(node.binaryRight());
 
 	if (left !== null && right !== null && left.kind === NodeKind.BOOL && right.kind === NodeKind.BOOL) {
 		return Node.createBool(op(left.asBool(), right.asBool()));
@@ -850,8 +849,8 @@ export function _foldBinaryBool(node: Node, op: (v0: boolean, v1: boolean) => bo
 
 export function _foldBinaryFloatOrInt(node: Node, floatOp: (v0: number, v1: number) => number, intOp: (v0: number, v1: number) => number): Node {
 	let ref: Node;
-	let left = fold(node.binaryLeft());
-	let right = fold(node.binaryRight());
+	const left = fold(node.binaryLeft());
+	const right = fold(node.binaryRight());
 
 	if (left !== null && right !== null) {
 		return (ref = _foldFloat2(left, right, floatOp)) !== null ? ref : _foldInt2(left, right, intOp);
@@ -861,8 +860,8 @@ export function _foldBinaryFloatOrInt(node: Node, floatOp: (v0: number, v1: numb
 }
 
 export function _foldBinaryFloatOrIntToBool(node: Node, op: (v0: number, v1: number) => boolean): Node {
-	let left = fold(node.binaryLeft());
-	let right = fold(node.binaryRight());
+	const left = fold(node.binaryLeft());
+	const right = fold(node.binaryRight());
 
 	// The comparison operators only work on scalars in GLSL. To do comparisons
 	// on vectors, the functions greaterThan(), lessThan(), greaterThanEqual(),

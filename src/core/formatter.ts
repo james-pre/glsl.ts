@@ -1,4 +1,3 @@
-import { string_get13, string_repeat, string_slice22, string_slice12, List_slice11, List_get2, List_takeLast } from '../native-js.js';
 import { Log } from './log.js';
 import { Source } from './source.js';
 import { TokenKind, TokenKind_isBinaryOperator, TokenKind_isIdentifierOrType, TokenPurpose, tokenize } from './tokenizer.js';
@@ -12,17 +11,16 @@ export const enum TrailingNewline {
 export function _formatWhitespace(text: string, indent: string, newline: string): string {
 	let lineCount = 0;
 	let i = 0;
-	let n = text.length;
 
-	while (i < n) {
-		let c = string_get13(text, i);
-		i = i + 1;
+	while (i < text.length) {
+		const c = text.charCodeAt(i);
+		i++;
 
 		if (_isNewline(c)) {
-			lineCount = lineCount + 1;
+			lineCount++;
 
-			if (c === 13 && i < n && string_get13(text, i) === 10) {
-				i = i + 1;
+			if (c === 13 && i < text.length && text.charCodeAt(i) === 10) {
+				i++;
 			}
 		}
 	}
@@ -31,7 +29,7 @@ export function _formatWhitespace(text: string, indent: string, newline: string)
 		lineCount = 2;
 	}
 
-	return string_repeat(newline, lineCount);
+	return newline.repeat(lineCount);
 }
 
 export function _keepSpaceBetween(prev: TokenKind, left: TokenKind, right: TokenKind): boolean {
@@ -161,8 +159,8 @@ export function _isNewline(c: number): boolean {
 }
 
 export function _hasNewline(text: string): boolean {
-	for (let i = 0, n = text.length; i < n; i = i + 1) {
-		if (_isNewline(string_get13(text, i))) {
+	for (let i = 0, n = text.length; i < n; i++) {
+		if (_isNewline(text.charCodeAt(i))) {
 			return true;
 		}
 	}
@@ -175,8 +173,8 @@ export function _isWhitespace(c: number): boolean {
 }
 
 export function _isAllWhitespace(text: string): boolean {
-	for (let i = 0, n = text.length; i < n; i = i + 1) {
-		if (!_isWhitespace(string_get13(text, i))) {
+	for (let i = 0, n = text.length; i < n; i++) {
+		if (!_isWhitespace(text.charCodeAt(i))) {
 			return false;
 		}
 	}
@@ -187,59 +185,59 @@ export function _isAllWhitespace(text: string): boolean {
 export function _trimSingleLineComment(text: string): string {
 	let i = text.length;
 
-	while (_isWhitespace(string_get13(text, i - 1))) {
+	while (_isWhitespace(text.charCodeAt(i - 1))) {
 		i = i - 1;
 	}
 
-	return string_slice22(text, 0, i);
+	return text.slice(0, i);
 }
 
 export function _trimMultiLineComment(comment: string, beforeComment: string, indent: string, newline: string): string {
 	// Split the comment contents into lines
-	let lines: Array<string> = [];
+	const lines: Array<string> = [];
 	let start = 0;
 
-	for (let i = 0, n = comment.length; i < n; i = i + 1) {
-		let c = string_get13(comment, i);
+	for (let i = 0, n = comment.length; i < n; i++) {
+		const c = comment.charCodeAt(i);
 
 		if (_isNewline(c)) {
-			lines.push(string_slice22(comment, start, i));
+			lines.push(comment.slice(start, i));
 
-			if (c === 13 && i + 1 < n && string_get13(comment, i + 1) === 10) {
-				i = i + 1;
+			if (c === 13 && i + 1 < n && comment.charCodeAt(i + 1) === 10) {
+				i++;
 			}
 
 			start = i + 1;
 		}
 	}
 
-	lines.push(string_slice12(comment, start));
+	lines.push(comment.slice(start));
 
 	// Find the start of the line containing the start of the comment
 	let firstLine = beforeComment.length;
 
-	while (firstLine > 0 && !_isNewline(string_get13(beforeComment, firstLine - 1))) {
+	while (firstLine > 0 && !_isNewline(beforeComment.charCodeAt(firstLine - 1))) {
 		firstLine = firstLine - 1;
 	}
 
-	let lineBeforeComment = string_slice12(beforeComment, firstLine);
+	const lineBeforeComment = beforeComment.slice(firstLine);
 
 	// Determine the common whitespace prefix
 	let commonPrefix = lineBeforeComment;
 
-	for (const line of List_slice11(lines, 1)) {
+	for (const line of lines.slice(1)) {
 		if (_isAllWhitespace(line)) {
 			continue;
 		}
 
 		let i1 = 0;
-		let n1 = line.length;
+		const n1 = line.length;
 
-		while (i1 < n1 && i1 < commonPrefix.length && string_get13(line, i1) === string_get13(commonPrefix, i1)) {
+		while (i1 < n1 && i1 < commonPrefix.length && line.charCodeAt(i1) === commonPrefix.charCodeAt(i1)) {
 			i1 = i1 + 1;
 		}
 
-		commonPrefix = string_slice22(commonPrefix, 0, i1);
+		commonPrefix = commonPrefix.slice(0, i1);
 	}
 
 	// Join the lines together
@@ -248,7 +246,7 @@ export function _trimMultiLineComment(comment: string, beforeComment: string, in
 	for (const line1 of lines) {
 		if (result === '') {
 			if (_isAllWhitespace(lineBeforeComment)) {
-				result += string_slice12(lineBeforeComment, commonPrefix.length);
+				result += lineBeforeComment.slice(commonPrefix.length);
 			}
 
 			result += line1;
@@ -256,7 +254,7 @@ export function _trimMultiLineComment(comment: string, beforeComment: string, in
 			result += newline;
 
 			if (!_isAllWhitespace(line1)) {
-				result += indent + string_slice12(line1, commonPrefix.length);
+				result += indent + line1.slice(commonPrefix.length);
 			}
 		}
 	}
@@ -265,9 +263,9 @@ export function _trimMultiLineComment(comment: string, beforeComment: string, in
 }
 
 export function format1(input: string, indent: string, newline: string, trailingNewline: TrailingNewline): string {
-	let log = new Log();
-	let source = new Source('<stdin>', input);
-	let tokens = tokenize(log, source, TokenPurpose.FORMAT);
+	const log = new Log();
+	const source = new Source('<stdin>', input);
+	const tokens = tokenize(log, source, TokenPurpose.FORMAT);
 
 	if (log.hasErrors()) {
 		return input;
@@ -281,10 +279,10 @@ export function format1(input: string, indent: string, newline: string, trailing
 	let isStartOfLine = true;
 	let tokenIndex = 0;
 	let consumeIf: (v0: (v0: TokenKind) => boolean) => boolean = null;
-	let hasNewlineBefore: (v0: number) => boolean = (index: number) => {
-		return !_isAllWhitespace(string_slice22(input, List_get2(tokens, index - 1).range.end, List_get2(tokens, index).range.start));
+	const hasNewlineBefore: (v0: number) => boolean = (index: number) => {
+		return !_isAllWhitespace(input.slice(tokens[index - 1].range.end, tokens[index].range.start));
 	};
-	let isStatementEnd: (v0: TokenKind, v1: boolean) => boolean = (kind: TokenKind, isFirst: boolean) => {
+	const isStatementEnd: (v0: TokenKind, v1: boolean) => boolean = (kind: TokenKind, isFirst: boolean) => {
 		switch (kind) {
 			case TokenKind.SEMICOLON:
 			case TokenKind.RIGHT_BRACE: {
@@ -313,11 +311,11 @@ export function format1(input: string, indent: string, newline: string, trailing
 	let handleStatement: () => boolean = null;
 
 	// Scan over non-block bodies until the ending ";"
-	let handleBody: () => void = () => {
+	const handleBody: () => void = () => {
 		let intended = 1;
 
-		for (let i = tokenIndex; i < tokens.length; i = i + 1) {
-			switch (List_get2(tokens, i).kind) {
+		for (let i = tokenIndex; i < tokens.length; i++) {
+			switch (tokens[i].kind) {
 				// A comment doesn't count as a body
 				case TokenKind.SINGLE_LINE_COMMENT:
 				case TokenKind.MULTI_LINE_COMMENT: {
@@ -339,11 +337,11 @@ export function format1(input: string, indent: string, newline: string, trailing
 	};
 
 	// "if" or "for" or "while"
-	let handleBranch: () => boolean = () => {
+	const handleBranch: () => boolean = () => {
 		// Double-indent in parentheses unless they are followed by a newline
 		let doubleIndent = 1;
 
-		if (List_get2(tokens, tokenIndex).kind === TokenKind.LEFT_PARENTHESIS && hasNewlineBefore(tokenIndex + 1)) {
+		if (tokens[tokenIndex].kind === TokenKind.LEFT_PARENTHESIS && hasNewlineBefore(tokenIndex + 1)) {
 			doubleIndent = 0;
 		}
 
@@ -369,7 +367,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 			})
 		) {}
 
-		switch (List_get2(tokens, tokenIndex).kind) {
+		switch (tokens[tokenIndex].kind) {
 			case TokenKind.END_OF_FILE:
 			case TokenKind.RIGHT_BRACE: {
 				return false;
@@ -393,7 +391,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 				}
 
 				// Consume an "else" after the if so it gets this statement's indentation level
-				if (List_get2(tokens, tokenIndex).kind === TokenKind.ELSE) {
+				if (tokens[tokenIndex].kind === TokenKind.ELSE) {
 					handleStatement();
 				}
 				break;
@@ -435,8 +433,8 @@ export function format1(input: string, indent: string, newline: string, trailing
 					return true;
 				});
 
-				if (List_get2(tokens, tokenIndex).kind === TokenKind.IF) {
-					let isOnNewLine = hasNewlineBefore(tokenIndex);
+				if (tokens[tokenIndex].kind === TokenKind.IF) {
+					const isOnNewLine = hasNewlineBefore(tokenIndex);
 
 					if (isOnNewLine) {
 						nesting = nesting + 1;
@@ -484,7 +482,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 			}
 
 			default: {
-				let couldBeType = TokenKind_isIdentifierOrType(List_get2(tokens, tokenIndex).kind);
+				const couldBeType = TokenKind_isIdentifierOrType(tokens[tokenIndex].kind);
 				consumeIf((kind: TokenKind) => {
 					return true;
 				});
@@ -540,12 +538,12 @@ export function format1(input: string, indent: string, newline: string, trailing
 
 		return true;
 	};
-	let indexOfClosingBrace: () => number = () => {
-		let stack: Array<TokenKind> = [];
+	const indexOfClosingBrace: () => number = () => {
+		const stack: Array<TokenKind> = [];
 		let i = tokenIndex;
 
 		while (i < tokens.length) {
-			let kind = List_get2(tokens, i).kind;
+			const kind = tokens[i].kind;
 
 			switch (kind) {
 				case TokenKind.LEFT_BRACE:
@@ -560,36 +558,36 @@ export function format1(input: string, indent: string, newline: string, trailing
 						return i;
 					}
 
-					if (List_takeLast(stack) !== TokenKind.LEFT_BRACE) {
+					if (stack.pop() !== TokenKind.LEFT_BRACE) {
 						return -1;
 					}
 					break;
 				}
 
 				case TokenKind.RIGHT_BRACKET: {
-					if (stack.length === 0 || List_takeLast(stack) !== TokenKind.LEFT_BRACKET) {
+					if (stack.length === 0 || stack.pop() !== TokenKind.LEFT_BRACKET) {
 						return -1;
 					}
 					break;
 				}
 
 				case TokenKind.RIGHT_PARENTHESIS: {
-					if (stack.length === 0 || List_takeLast(stack) !== TokenKind.LEFT_PARENTHESIS) {
+					if (stack.length === 0 || stack.pop() !== TokenKind.LEFT_PARENTHESIS) {
 						return -1;
 					}
 					break;
 				}
 			}
 
-			i = i + 1;
+			i++;
 		}
 
 		return -1;
 	};
 	let forceMultiLine = -1;
-	let handleBraces: () => void = () => {
-		let rightBrace = indexOfClosingBrace();
-		let isMultiLine = rightBrace !== -1 && _hasNewline(string_slice22(input, List_get2(tokens, tokenIndex - 1).range.end, List_get2(tokens, rightBrace).range.start));
+	const handleBraces: () => void = () => {
+		const rightBrace = indexOfClosingBrace();
+		const isMultiLine = rightBrace !== -1 && _hasNewline(input.slice(tokens[tokenIndex - 1].range.end, tokens[rightBrace].range.start));
 
 		if (isMultiLine) {
 			forceMultiLine = tokenIndex;
@@ -609,7 +607,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 			return kind === TokenKind.RIGHT_BRACE;
 		});
 	};
-	let handleParentheses: () => void = () => {
+	const handleParentheses: () => void = () => {
 		nesting = nesting + 1;
 
 		while (
@@ -623,7 +621,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 			return kind === TokenKind.RIGHT_PARENTHESIS;
 		});
 	};
-	let handleBrackets: () => void = () => {
+	const handleBrackets: () => void = () => {
 		nesting = nesting + 1;
 
 		while (
@@ -638,14 +636,14 @@ export function format1(input: string, indent: string, newline: string, trailing
 		});
 	};
 	consumeIf = (when: (v0: TokenKind) => boolean) => {
-		let token = List_get2(tokens, tokenIndex);
+		const token = tokens[tokenIndex];
 
 		if (!when(token.kind) || token.kind === TokenKind.END_OF_FILE) {
 			return false;
 		}
 
-		let newlines =
-			forceMultiLine === tokenIndex ? '\n' : prevKind === TokenKind.END_OF_FILE ? '' : _formatWhitespace(string_slice22(input, prevEnd, token.range.start), indent, newline);
+		const newlines =
+			forceMultiLine === tokenIndex ? '\n' : prevKind === TokenKind.END_OF_FILE ? '' : _formatWhitespace(input.slice(prevEnd, token.range.start), indent, newline);
 		tokenIndex = tokenIndex + 1;
 		text += newlines;
 
@@ -654,7 +652,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 		}
 
 		if (isStartOfLine) {
-			text += string_repeat(indent, nesting);
+			text += indent.repeat(nesting);
 		} else if (_keepSpaceBetween(prevPrevKind, prevKind, token.kind)) {
 			text += ' ';
 		}
@@ -668,7 +666,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 			}
 
 			case TokenKind.MULTI_LINE_COMMENT: {
-				slice = _trimMultiLineComment(slice, string_slice22(input, 0, token.range.start), string_repeat(indent, nesting), newline);
+				slice = _trimMultiLineComment(slice, input.slice(0, token.range.start), indent.repeat(nesting), newline);
 				break;
 			}
 		}
@@ -707,7 +705,7 @@ export function format1(input: string, indent: string, newline: string, trailing
 		})
 	) {}
 
-	let newlines = _formatWhitespace(string_slice12(input, prevEnd), indent, newline);
+	const newlines = _formatWhitespace(input.slice(prevEnd), indent, newline);
 
 	switch (trailingNewline) {
 		case TrailingNewline.PRESERVE: {

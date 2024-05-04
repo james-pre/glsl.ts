@@ -1,4 +1,3 @@
-import { List_get2, assert, IntMap_get4, IntMap_set3 } from '../native-js.js';
 import { CompilerData } from './compiler.js';
 import { Log } from './log.js';
 import { Node } from './node.js';
@@ -50,11 +49,11 @@ export class ParserContext {
 	_scope: Scope;
 
 	current(): Token {
-		return List_get2(this._tokens, this._index);
+		return this._tokens[this._index];
 	}
 
 	next(): Token {
-		let token = this.current();
+		const token = this.current();
 
 		if (this._index + 1 < this._tokens.length) {
 			this._index = this._index + 1;
@@ -64,7 +63,7 @@ export class ParserContext {
 	}
 
 	spanSince(range: Range): Range {
-		let previous = List_get2(this._tokens, this._index > 0 ? this._index - 1 : 0);
+		const previous = this._tokens[this._index > 0 ? this._index - 1 : 0];
 		return previous.range.end < range.start ? range : Range.span(range, previous.range);
 	}
 
@@ -86,9 +85,9 @@ export class ParserContext {
 			return true;
 		}
 
-		let token = this.current();
-		let range = token.range;
-		let previous = (this._index > 0 ? List_get2(this._tokens, this._index - 1) : token).range;
+		const token = this.current();
+		const range = token.range;
+		const previous = (this._index > 0 ? this._tokens[this._index - 1] : token).range;
 
 		// Put errors about missing semicolons and about tokens on the next line
 		// after the previous token instead of at the next token
@@ -110,12 +109,12 @@ export class ParserContext {
 	}
 
 	pushScope(newScope: Scope): void {
-		assert(newScope.parent === this._scope);
+		console.assert(newScope.parent === this._scope);
 		this._scope = newScope;
 	}
 
 	popScope(): void {
-		assert(this._scope !== null);
+		console.assert(this._scope !== null);
 		this._scope = this._scope.parent;
 	}
 
@@ -154,12 +153,12 @@ export class Pratt {
 	_table: Map<number, Parselet>;
 
 	parselet(kind: TokenKind, precedence: Precedence): Parselet {
-		let parselet = IntMap_get4(this._table, kind, null);
+		let parselet = this._table.get(kind);
 
-		if (parselet === null) {
-			let created = new Parselet(precedence);
+		if (!parselet) {
+			const created = new Parselet(precedence);
 			parselet = created;
-			IntMap_set3(this._table, kind, created);
+			this._table.set(kind, created);
 		} else if (precedence > parselet.precedence) {
 			parselet.precedence = precedence;
 		}
@@ -168,32 +167,32 @@ export class Pratt {
 	}
 
 	parse(context: ParserContext, precedence: Precedence): Node {
-		let token = context.current();
-		let parselet = IntMap_get4(this._table, token.kind, null);
+		const token = context.current();
+		const parselet = this._table.get(token.kind);
 
-		if (parselet === null || parselet.prefix === null) {
+		if (!parselet || parselet.prefix === null) {
 			context.unexpectedToken();
 			return null;
 		}
 
-		let node = this.resume(context, precedence, parselet.prefix(context));
+		const node = this.resume(context, precedence, parselet.prefix(context));
 
-		assert(node === null || node.range !== null); // Parselets must set the range of every node
+		console.assert(node === null || node.range !== null); // Parselets must set the range of every node
 		return node;
 	}
 
 	resume(context: ParserContext, precedence: Precedence, left: Node): Node {
 		while (left !== null) {
-			let kind = context.current().kind;
-			let parselet = IntMap_get4(this._table, kind, null);
+			const kind = context.current().kind;
+			const parselet = this._table.get(kind);
 
-			if (parselet === null || parselet.infix === null || parselet.precedence <= precedence) {
+			if (!parselet || parselet.infix === null || parselet.precedence <= precedence) {
 				break;
 			}
 
 			left = parselet.infix(context, left);
 
-			assert(left === null || left.range !== null); // Parselets must set the range of every node
+			console.assert(left === null || left.range !== null); // Parselets must set the range of every node
 		}
 
 		return left;
@@ -207,8 +206,8 @@ export class Pratt {
 
 	prefix(kind: TokenKind, precedence: Precedence, callback: (v0: ParserContext, v1: Token, v2: Node) => Node): void {
 		this.parselet(kind, Precedence.LOWEST).prefix = (context: ParserContext) => {
-			let token = context.next();
-			let value = this.parse(context, precedence);
+			const token = context.next();
+			const value = this.parse(context, precedence);
 			return value !== null ? callback(context, token, value) : null;
 		};
 	}
@@ -221,17 +220,17 @@ export class Pratt {
 
 	infix(kind: TokenKind, precedence: Precedence, callback: (v0: ParserContext, v1: Node, v2: Token, v3: Node) => Node): void {
 		this.parselet(kind, precedence).infix = (context: ParserContext, left: Node) => {
-			let token = context.next();
-			let right = this.parse(context, precedence);
+			const token = context.next();
+			const right = this.parse(context, precedence);
 			return right !== null ? callback(context, left, token, right) : null;
 		};
 	}
 
 	infixRight(kind: TokenKind, precedence: Precedence, callback: (v0: ParserContext, v1: Node, v2: Token, v3: Node) => Node): void {
 		this.parselet(kind, precedence).infix = (context: ParserContext, left: Node) => {
-			let token = context.next();
+			const token = context.next();
 
-			let right = this.parse(context, precedence - 1); // Subtract 1 for right-associativity
+			const right = this.parse(context, precedence - 1); // Subtract 1 for right-associativity
 			return right !== null ? callback(context, left, token, right) : null;
 		};
 	}

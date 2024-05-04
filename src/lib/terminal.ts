@@ -1,5 +1,3 @@
-import { IntMap_get12, IntMap_insert2 } from '../native-js.js';
-
 export const enum Color {
 	DEFAULT,
 	BOLD,
@@ -30,28 +28,18 @@ export function write(text: string): void {
 	process.stdout.write(text);
 }
 
-export function Color_toEscapeCode(self: Color): number {
-	return IntMap_get12(colorToEscapeCode, self);
+export function Color_toEscapeCode(color: Color): number {
+	console.assert(colorToEscapeCode.has(color));
+	return colorToEscapeCode.get(color);
 }
 
-export let colorToEscapeCode = IntMap_insert2(
-	IntMap_insert2(
-		IntMap_insert2(
-			IntMap_insert2(
-				IntMap_insert2(
-					IntMap_insert2(IntMap_insert2(IntMap_insert2(IntMap_insert2(new Map(), Color.DEFAULT, 0), Color.BOLD, 1), Color.GRAY, 90), Color.RED, 31),
-					Color.GREEN,
-					32
-				),
-				Color.YELLOW,
-				33
-			),
-			Color.BLUE,
-			34
-		),
-		Color.MAGENTA,
-		35
-	),
-	Color.CYAN,
-	36
-);
+export const colorToEscapeCode = new Map();
+colorToEscapeCode.set(Color.DEFAULT, 0);
+colorToEscapeCode.set(Color.BOLD, 1);
+colorToEscapeCode.set(Color.GRAY, 90);
+colorToEscapeCode.set(Color.RED, 31);
+colorToEscapeCode.set(Color.GREEN, 32);
+colorToEscapeCode.set(Color.YELLOW, 33);
+colorToEscapeCode.set(Color.BLUE, 34);
+colorToEscapeCode.set(Color.MAGENTA, 35);
+colorToEscapeCode.set(Color.CYAN, 36);

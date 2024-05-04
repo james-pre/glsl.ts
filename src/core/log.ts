@@ -1,4 +1,3 @@
-import { StringBuilder, List_last } from '../native-js.js';
 import { Range } from './range.js';
 import { _Symbol } from './symbol.js';
 import { Token, TokenKind } from './tokenizer.js';
@@ -21,7 +20,7 @@ export class Diagnostic {
 			return `${kind}: ${text}\n`;
 		}
 
-		let formatted = range.format(0);
+		const formatted = range.format(0);
 		return `${range.locationString()}: ${kind}: ${text}\n${formatted.line}\n${formatted.range}\n`;
 	}
 
@@ -42,19 +41,19 @@ export class Log {
 	_prevErrorRange: Range;
 
 	toString(): string {
-		let builder = new StringBuilder();
+		let builder = '';
 
 		// Emit the log assuming an infinite terminal width
 		for (const diagnostic of this.diagnostics) {
-			builder.buffer += Diagnostic.format(diagnostic.kind === DiagnosticKind.ERROR ? 'error' : 'warning', diagnostic.range, diagnostic.text);
+			builder += Diagnostic.format(diagnostic.kind === DiagnosticKind.ERROR ? 'error' : 'warning', diagnostic.range, diagnostic.text);
 
 			// Append notes after the diagnostic they apply to
 			if (diagnostic.noteRange !== null) {
-				builder.buffer += Diagnostic.format('note', diagnostic.noteRange, diagnostic.noteText);
+				builder += Diagnostic.format('note', diagnostic.noteRange, diagnostic.noteText);
 			}
 		}
 
-		return builder.buffer;
+		return builder;
 	}
 
 	hasErrors(): boolean {
@@ -81,7 +80,7 @@ export class Log {
 	}
 
 	note(range: Range, text: string): void {
-		let last = List_last(this.diagnostics);
+		const last = this.diagnostics.at(-1);
 		last.noteRange = range;
 		last.noteText = text;
 	}

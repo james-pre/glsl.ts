@@ -1,4 +1,3 @@
-import { List_get2, string_slice22, string_get13 } from '../native-js.js';
 import { Range } from './range.js';
 import { Token } from './tokenizer.js';
 
@@ -32,9 +31,9 @@ export class Source {
 			return '';
 		}
 
-		let start = List_get2(this._lineOffsets, line);
-		let end = line + 1 < this._lineOffsets.length ? List_get2(this._lineOffsets, line + 1) - 1 : this.contents.length;
-		return string_slice22(this.contents, start, end);
+		const start = this._lineOffsets[line];
+		const end = line + 1 < this._lineOffsets.length ? this._lineOffsets[line + 1] - 1 : this.contents.length;
+		return this.contents.slice(start, end);
 	}
 
 	indexToLineColumn(index: number): LineColumn {
@@ -45,10 +44,10 @@ export class Source {
 		let line = 0;
 
 		while (count > 0) {
-			let step = (count / 2) | 0;
-			let i = line + step;
+			const step = (count / 2) | 0;
+			const i = line + step;
 
-			if (List_get2(this._lineOffsets, i) <= index) {
+			if (this._lineOffsets[i] <= index) {
 				line = i + 1;
 				count = count - step - 1;
 			} else {
@@ -57,7 +56,7 @@ export class Source {
 		}
 
 		// Use the line to compute the column
-		let column = line > 0 ? index - List_get2(this._lineOffsets, line - 1) : index;
+		const column = line > 0 ? index - this._lineOffsets[line - 1] : index;
 		return new LineColumn(line - 1, column);
 	}
 
@@ -65,9 +64,9 @@ export class Source {
 		this._computeLineOffsets();
 
 		if (line >= 0 && line < this._lineOffsets.length) {
-			let index = List_get2(this._lineOffsets, line);
+			const index = this._lineOffsets[line];
 
-			if (column >= 0 && index + column < (line + 1 < this._lineOffsets.length ? List_get2(this._lineOffsets, line + 1) : this.contents.length)) {
+			if (column >= 0 && index + column < (line + 1 < this._lineOffsets.length ? this._lineOffsets[line + 1] : this.contents.length)) {
 				return index + column;
 			}
 		}
@@ -79,8 +78,8 @@ export class Source {
 		if (this._lineOffsets === null) {
 			this._lineOffsets = [0];
 
-			for (let i = 0, count = this.contents.length; i < count; i = i + 1) {
-				if (string_get13(this.contents, i) === 10) {
+			for (let i = 0, count = this.contents.length; i < count; i++) {
+				if (this.contents.charCodeAt(i) === 10) {
 					this._lineOffsets.push(i + 1);
 				}
 			}

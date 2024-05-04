@@ -1,4 +1,3 @@
-import { assert } from '../native-js.js';
 import { Type } from './type.js';
 
 export function strings(componentCount: number): Array<string> {
@@ -16,12 +15,12 @@ export function strings(componentCount: number): Array<string> {
 		}
 	}
 
-	assert(false);
+	console.assert(false);
 	return null;
 }
 
 export function type(comonentType: Type, componentCount: number): Type {
-	let value = comonentType;
+	const value = comonentType;
 
 	if (value === Type.BOOL) {
 		switch (componentCount) {
@@ -79,10 +78,10 @@ export function type(comonentType: Type, componentCount: number): Type {
 		}
 	}
 
-	assert(false);
+	console.assert(false);
 	return null;
 }
 
-export let _STRINGS_2: Array<string> = ['xy', 'st', 'rg'];
-export let _STRINGS_3: Array<string> = ['xyz', 'stp', 'rgb'];
-export let _STRINGS_4: Array<string> = ['xyzw', 'stpq', 'rgba'];
+export const _STRINGS_2: Array<string> = ['xy', 'st', 'rg'];
+export const _STRINGS_3: Array<string> = ['xyz', 'stp', 'rgb'];
+export const _STRINGS_4: Array<string> = ['xyzw', 'stpq', 'rgba'];

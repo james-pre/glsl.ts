@@ -1,4 +1,3 @@
-import { string_slice12, string_slice22, assert, List_first, string_get13 } from '../native-js.js';
 import { CompilerOptions, ExtensionBehavior } from './compiler.js';
 import { Node, NodeKind, NodeKind_isBinaryAssign, NodeKind_isExpression, NodeKind_isStatement, NodeKind_isUnaryPrefix } from './node.js';
 import { Precedence } from './pratt.js';
@@ -32,19 +31,19 @@ export class Emitter {
 		let text = value.toString();
 
 		// Check to see if exponential form is smaller
-		let exponential: string = value.toExponential();
+		const exponential: string = value.toExponential();
 
 		if (exponential.length < text.length) {
 			text = exponential;
 		}
 
 		// Strip off the exponent
-		let e = text.indexOf('e');
+		const e = text.indexOf('e');
 		let exponent = '';
 
 		if (e !== -1) {
-			exponent = string_slice12(text, e);
-			text = string_slice22(text, 0, e);
+			exponent = text.slice(e);
+			text = text.slice(0, e);
 		}
 
 		// 32-bit floating point only needs six digits
@@ -57,12 +56,12 @@ export class Emitter {
 
 		// Strip the leading zero
 		if (mode === Emitter.EmitMode.MINIFIED && text.startsWith('0.') && text !== '0.') {
-			text = string_slice12(text, 1);
+			text = text.slice(1);
 		}
 
 		// Strip the leading zero with a minus sign
 		if (mode === Emitter.EmitMode.MINIFIED && text.startsWith('-0.') && text !== '-0.') {
-			text = '-' + string_slice12(text, 2);
+			text = '-' + text.slice(2);
 		}
 
 		// Put the exponent back
@@ -124,12 +123,12 @@ export class Emitter {
 
 	_decreaseIndent(): void {
 		if (!this._removeWhitespace) {
-			this._indent = string_slice12(this._indent, 2);
+			this._indent = this._indent.slice(2);
 		}
 	}
 
 	_emit1(node: Node): void {
-		assert(NodeKind_isStatement(node.kind));
+		console.assert(NodeKind_isStatement(node.kind));
 
 		switch (node.kind) {
 			case NodeKind.BLOCK: {
@@ -243,7 +242,7 @@ export class Emitter {
 			}
 
 			case NodeKind.FUNCTION: {
-				let _function = node.symbol.asFunction();
+				const _function = node.symbol.asFunction();
 				this._emit4(SymbolFlags_toString(_function.flags));
 				this._emit3(_function.returnType, Precedence.LOWEST);
 				this._emit4(' ');
@@ -251,7 +250,7 @@ export class Emitter {
 				this._emit4('(');
 
 				for (const argument of _function._arguments) {
-					if (argument !== List_first(_function._arguments)) {
+					if (argument !== _function._arguments[0]) {
 						this._emit4(',' + this._space);
 					}
 
@@ -300,7 +299,7 @@ export class Emitter {
 			}
 
 			case NodeKind.RETURN: {
-				let value = node.returnValue();
+				const value = node.returnValue();
 				this._emit4('return');
 
 				if (value !== null) {
@@ -316,13 +315,13 @@ export class Emitter {
 			}
 
 			case NodeKind.STRUCT: {
-				let symbol = node.symbol.asStruct();
+				const symbol = node.symbol.asStruct();
 				this._emit4(SymbolFlags_toString(symbol.flags));
 				this._emit4('struct ' + symbol.name + this._space + '{' + this._newline);
 				this._increaseIndent();
 
 				for (let child1 = node.structBlock().firstChild(); child1 !== null; child1 = child1.nextSibling()) {
-					assert(child1.kind === NodeKind.VARIABLES);
+					console.assert(child1.kind === NodeKind.VARIABLES);
 					this._emit4(this._indent);
 					this._emit1(child1);
 					this._emit4(this._newline);
@@ -333,7 +332,7 @@ export class Emitter {
 
 				if (node.structVariables() !== null) {
 					for (let child2 = node.structVariables().variablesType().nextSibling(); child2 !== null; child2 = child2.nextSibling()) {
-						assert(child2.kind === NodeKind.VARIABLE);
+						console.assert(child2.kind === NodeKind.VARIABLE);
 						this._emit4(child2.previousSibling().previousSibling() === null ? this._space : ',' + this._space);
 						this._emit2(child2.symbol.asVariable());
 					}
@@ -348,7 +347,7 @@ export class Emitter {
 				this._emit3(node.variablesType(), Precedence.LOWEST);
 
 				for (let child3 = node.variablesType().nextSibling(); child3 !== null; child3 = child3.nextSibling()) {
-					let variable = child3.symbol.asVariable();
+					const variable = child3.symbol.asVariable();
 					this._emit4(child3.previousSibling().previousSibling() === null ? ' ' : ',' + this._space);
 					this._emit2(variable);
 				}
@@ -430,7 +429,7 @@ export class Emitter {
 	}
 
 	_emit3(node: Node, precedence: Precedence): void {
-		assert(NodeKind_isExpression(node.kind));
+		console.assert(NodeKind_isExpression(node.kind));
 
 		switch (node.kind) {
 			case NodeKind.CALL: {
@@ -644,13 +643,13 @@ export class Emitter {
 	}
 
 	_emitUnaryPrefix(operator: string, node: Node, precedence: Precedence): void {
-		let value = node.unaryValue();
-		let kind = value.kind;
+		const value = node.unaryValue();
+		const kind = value.kind;
 		this._emit4(operator);
 
 		if (
-			(string_get13(operator, 0) === 45 && (kind === NodeKind.NEGATIVE || kind === NodeKind.PREFIX_DECREMENT || value.isNumberLessThanZero())) ||
-			(string_get13(operator, 0) === 43 && (kind === NodeKind.POSITIVE || kind === NodeKind.PREFIX_INCREMENT))
+			(operator.charCodeAt(0) === 45 && (kind === NodeKind.NEGATIVE || kind === NodeKind.PREFIX_DECREMENT || value.isNumberLessThanZero())) ||
+			(operator.charCodeAt(0) === 43 && (kind === NodeKind.POSITIVE || kind === NodeKind.PREFIX_INCREMENT))
 		) {
 			this._emit4(' ');
 		}
@@ -664,7 +663,7 @@ export class Emitter {
 	}
 
 	_emitBinary(operator: string, node: Node, outer: Precedence, inner: Precedence): void {
-		let isRightAssociative = NodeKind_isBinaryAssign(node.kind);
+		const isRightAssociative = NodeKind_isBinaryAssign(node.kind);
 
 		if (inner < outer) {
 			this._emit4('(');

@@ -1,4 +1,3 @@
-import { IntMap_set3, IntMap_get4, StringMap_set2, string_get5 } from '../native-js.js';
 import { CompilerData, CompilerOptions, ExtensionBehavior } from './compiler.js';
 import { Node, NodeKind, NodeKind_isBinary, NodeKind_isJump, NodeKind_isLiteral } from './node.js';
 import { VariableKind, VariableSymbol, _Symbol } from './symbol.js';
@@ -13,7 +12,7 @@ export class Rewriter {
 
 	static rewrite(global: Node, data: CompilerData, options: CompilerOptions): void {
 		while (true) {
-			let rewriter = new Rewriter();
+			const rewriter = new Rewriter();
 
 			if (options.compactSyntaxTree) {
 				rewriter._compact(global);
@@ -52,8 +51,8 @@ export class Rewriter {
 					return true;
 				}
 
-				let yes = node.ifTrue();
-				let needsBraces = Rewriter._addBracesToAvoidDanglingElseIssues(yes);
+				const yes = node.ifTrue();
+				const needsBraces = Rewriter._addBracesToAvoidDanglingElseIssues(yes);
 
 				if (needsBraces && yes.kind !== NodeKind.BLOCK) {
 					yes.replaceWith(Node.createBlock().appendChild(yes.cloneAndStealChildren()));
@@ -67,7 +66,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.FUNCTION: {
-				let _function = node.symbol.asFunction();
+				const _function = node.symbol.asFunction();
 
 				if (_function.block !== null) {
 					Rewriter._addBracesToAvoidDanglingElseIssues(_function.block);
@@ -102,7 +101,7 @@ export class Rewriter {
 
 		switch (node.kind) {
 			case NodeKind.VARIABLE: {
-				let variable = node.symbol.asVariable();
+				const variable = node.symbol.asVariable();
 
 				if (variable.value() !== null) {
 					this._scanSymbols(variable.value());
@@ -110,15 +109,15 @@ export class Rewriter {
 
 				if (variable.kind === VariableKind.LOCAL || variable.kind === VariableKind.GLOBAL) {
 					this._variables.push(variable);
-					IntMap_set3(this._useCounts, variable.id, 0);
-					IntMap_set3(this._mutationCounts, variable.id, 0);
+					this._useCounts.set(variable.id, 0);
+					this._mutationCounts.set(variable.id, 0);
 				}
 				break;
 			}
 
 			case NodeKind.FUNCTION: {
-				let _function = node.symbol.asFunction();
-				IntMap_set3(this._useCounts, _function.id, 0);
+				const _function = node.symbol.asFunction();
+				this._useCounts.set(_function.id, 0);
 
 				if (_function.block !== null) {
 					this._scanSymbols(_function.block);
@@ -128,27 +127,27 @@ export class Rewriter {
 
 			case NodeKind.NAME: {
 				// Track uses
-				let id = node.symbol.id;
-				let count = IntMap_get4(this._useCounts, id, -1);
+				const id = node.symbol.id;
+				let count = this._useCounts[id] ?? -1;
 
 				if (count !== -1) {
-					IntMap_set3(this._useCounts, id, count + 1);
+					this._useCounts.set(id, count + 1);
 				}
 
 				// Track mutations
 				if (node.isUsedInStorage()) {
-					count = IntMap_get4(this._mutationCounts, id, -1);
+					count = this._mutationCounts[id] ?? -1;
 
 					if (count !== -1) {
-						IntMap_set3(this._mutationCounts, id, count + 1);
+						this._mutationCounts.set(id, count + 1);
 					}
 				}
 
 				// Track referenced extensions
-				let name = node.symbol.requiredExtension;
+				const name = node.symbol.requiredExtension;
 
 				if (name !== null) {
-					StringMap_set2(this._referencedExtensions, name, 0);
+					this._referencedExtensions.set(name, 0);
 				}
 				break;
 			}
@@ -178,10 +177,10 @@ export class Rewriter {
 					// The array count "int x[1]" is not in the AST and will not be
 					// visited during an AST traversal. Special-case it here so constants
 					// inside it are still replaced.
-					let arrayCount = node.symbol.asVariable().arrayCount;
+					const arrayCount = node.symbol.asVariable().arrayCount;
 
 					if (arrayCount !== null && arrayCount.kind === NodeKind.NAME) {
-						let clone = this._literalConstantForSymbol(arrayCount.symbol);
+						const clone = this._literalConstantForSymbol(arrayCount.symbol);
 
 						if (clone !== null) {
 							node.symbol.asVariable().arrayCount = clone;
@@ -193,7 +192,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.FUNCTION: {
-				let _function = node.symbol.asFunction();
+				const _function = node.symbol.asFunction();
 
 				if (this._isUnused(_function as _Symbol) && !_function.isExported()) {
 					node.remove();
@@ -209,7 +208,7 @@ export class Rewriter {
 					// If it lives in a block or is global, remove it. Otherwise we can't
 					// blindly remove it, or we risk removing the true-branch of an
 					// if-statement or the body of a for-loop, leading to an invalid AST.
-					let parentKind = node.parent().kind;
+					const parentKind = node.parent().kind;
 
 					if (parentKind === NodeKind.BLOCK || parentKind === NodeKind.GLOBAL || parentKind === NodeKind.STRUCT) {
 						node.remove();
@@ -225,7 +224,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.NAME: {
-				let clone1 = this._literalConstantForSymbol(node.symbol);
+				const clone1 = this._literalConstantForSymbol(node.symbol);
 
 				if (clone1 !== null) {
 					node.replaceWith(clone1);
@@ -264,8 +263,8 @@ export class Rewriter {
 
 	_isUnused(symbol: _Symbol): boolean {
 		return (
-			IntMap_get4(this._useCounts, symbol.id, -1) === 0 &&
-			(!symbol.isFunction() || symbol.asFunction().sibling === null || IntMap_get4(this._useCounts, symbol.asFunction().sibling.id, -1) === 0)
+			(this._useCounts.get(symbol.id) ?? -1) === 0 &&
+			((!symbol.isFunction() || symbol.asFunction().sibling === null || this._useCounts.get(symbol.asFunction().sibling.id)) ?? -1) === 0
 		);
 	}
 
@@ -274,7 +273,7 @@ export class Rewriter {
 	}
 
 	_isNonMutatedLiteral(symbol: _Symbol): boolean {
-		return IntMap_get4(this._mutationCounts, symbol.id, -1) === 0 && symbol.asVariable().value() !== null && NodeKind_isLiteral(symbol.asVariable().value().kind);
+		return (this._mutationCounts.get(symbol.id) ?? -1) === 0 && symbol.asVariable().value() !== null && NodeKind_isLiteral(symbol.asVariable().value().kind);
 	}
 
 	_compact(node: Node): void {
@@ -285,7 +284,7 @@ export class Rewriter {
 
 		switch (node.kind) {
 			case NodeKind.VARIABLE: {
-				let variable = node.symbol.asVariable();
+				const variable = node.symbol.asVariable();
 
 				if (variable.value() !== null) {
 					this._compact(variable.value());
@@ -339,10 +338,10 @@ export class Rewriter {
 
 					// Combine with a previous expression, if any (may open up more
 					// compacting opportunities in the future)
-					let previous = node.previousSibling();
+					const previous = node.previousSibling();
 
 					if (previous !== null && previous.kind === NodeKind.EXPRESSION) {
-						let value = node.expressionValue().remove();
+						const value = node.expressionValue().remove();
 						node.appendChild(Node.createSequence().appendChild(previous.remove().expressionValue().remove()).appendChild(value));
 						this._reportCodeChange();
 						return;
@@ -394,7 +393,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.FUNCTION: {
-				let _function = node.symbol.asFunction();
+				const _function = node.symbol.asFunction();
 
 				if (_function.block !== null) {
 					this._compact(_function.block);
@@ -430,8 +429,8 @@ export class Rewriter {
 
 				// Turn if-else statements into a single return statement
 				if (node.ifFalse() !== null && node.ifTrue().kind === NodeKind.RETURN && node.ifFalse().kind === NodeKind.RETURN) {
-					let yes = node.ifTrue().returnValue();
-					let no = node.ifFalse().returnValue();
+					const yes = node.ifTrue().returnValue();
+					const no = node.ifFalse().returnValue();
 
 					if (yes !== null && no !== null) {
 						node.replaceWith(Node.createReturn(Node.createHook(node.ifTest().remove(), yes.remove(), no.remove()).withType(yes.resolvedType)));
@@ -442,8 +441,8 @@ export class Rewriter {
 
 				// Turn if-else statements into shorter conditional expressions when possible
 				if (node.ifFalse() !== null && node.ifTrue().kind === NodeKind.EXPRESSION && node.ifFalse().kind === NodeKind.EXPRESSION) {
-					let yes1 = node.ifTrue().expressionValue();
-					let no1 = node.ifFalse().expressionValue();
+					const yes1 = node.ifTrue().expressionValue();
+					const no1 = node.ifFalse().expressionValue();
 
 					if (yes1.resolvedType === no1.resolvedType) {
 						node.replaceWith(Node.createExpression(Node.createHook(node.ifTest().remove(), yes1.remove(), no1.remove()).withType(yes1.resolvedType)));
@@ -454,14 +453,14 @@ export class Rewriter {
 
 				// Also turn if statements without else blocks into shorter conditional expressions when possible
 				if (node.ifFalse() === null && node.ifTrue().kind === NodeKind.EXPRESSION) {
-					let yes2 = node.ifTrue().expressionValue();
+					const yes2 = node.ifTrue().expressionValue();
 
 					// Only check assignments to local names in case global names aren't renamed (then it will be longer, not shorter)
-					let isAssignToArgumentOrLocalName =
+					const isAssignToArgumentOrLocalName =
 						yes2.kind === NodeKind.ASSIGN && yes2.binaryLeft().kind === NodeKind.NAME && yes2.binaryLeft().symbol.isArgumentOrLocalVariable();
 
 					if (yes2.resolvedType === Type.INT || yes2.resolvedType === Type.FLOAT || isAssignToArgumentOrLocalName) {
-						let value1: Node = isAssignToArgumentOrLocalName ? yes2.binaryLeft().clone() : yes2.resolvedType === Type.INT ? Node.createInt(0) : Node.createFloat(0);
+						const value1: Node = isAssignToArgumentOrLocalName ? yes2.binaryLeft().clone() : yes2.resolvedType === Type.INT ? Node.createInt(0) : Node.createFloat(0);
 						node.replaceWith(Node.createExpression(Node.createHook(node.ifTest().remove(), yes2.remove(), value1).withType(yes2.resolvedType)));
 						this._reportCodeChange();
 						return;
@@ -470,9 +469,9 @@ export class Rewriter {
 
 				// Inline a true-only branch
 				if (node.ifFalse() === null && node.ifTrue().kind === NodeKind.IF && node.ifTrue().ifFalse() === null) {
-					let left = node.ifTest();
-					let right = node.ifTrue().ifTest();
-					let body = node.ifTrue().ifTrue();
+					const left = node.ifTest();
+					const right = node.ifTrue().ifTest();
+					const body = node.ifTrue().ifTrue();
 					left.become(Node.createBinary(NodeKind.LOGICAL_AND, left.cloneAndStealChildren(), right.remove()).withType(Type.BOOL));
 					node.ifTrue().become(body.remove());
 					this._reportCodeChange();
@@ -506,8 +505,8 @@ export class Rewriter {
 				let previous1 = node.previousSibling();
 
 				while (previous1 !== null && previous1.kind === NodeKind.IF && previous1.ifFalse() === null && previous1.ifTrue().kind === NodeKind.RETURN) {
-					let yes3 = previous1.ifTrue().returnValue();
-					let no2 = node.returnValue();
+					const yes3 = previous1.ifTrue().returnValue();
+					const no2 = node.returnValue();
 
 					if (yes3 === null || no2 === null) {
 						break;
@@ -540,7 +539,7 @@ export class Rewriter {
 
 					// Only skip over variable blocks if all variables have constant initializers
 					for (let child3 = previous2.variablesType().nextSibling(); child3 !== null; child3 = child3.nextSibling()) {
-						let initializer = child3.variableInitializer();
+						const initializer = child3.variableInitializer();
 
 						if (initializer !== null && !NodeKind_isLiteral(initializer.kind)) {
 							return;
@@ -552,17 +551,17 @@ export class Rewriter {
 
 			case NodeKind.WHILE: {
 				// Turn into a for loop since they are more versatile
-				let test = node.whileTest();
-				let body1 = node.whileBody();
+				const test = node.whileTest();
+				const body1 = node.whileBody();
 				node.replaceWith(Node.createFor(null, test.remove(), null, body1.remove()));
 				this._reportCodeChange();
 				break;
 			}
 
 			case NodeKind.HOOK: {
-				let test1 = node.hookTest();
-				let yes4 = node.hookTrue();
-				let no3 = node.hookFalse();
+				const test1 = node.hookTest();
+				const yes4 = node.hookTrue();
+				const no3 = node.hookFalse();
 
 				// Special-case "true"
 				if (test1.isTrue()) {
@@ -582,10 +581,10 @@ export class Rewriter {
 				// Ignore INDEX expressions because GLSL requires the index value to
 				// be a constant expression, and HOOK expressions aren't constant.
 				if (yes4.kind === no3.kind && NodeKind_isBinary(yes4.kind) && yes4.binaryLeft().looksTheSameAs(no3.binaryLeft()) && yes4.kind !== NodeKind.INDEX) {
-					let common = yes4.binaryLeft();
-					let left1 = yes4.binaryRight();
-					let right1 = no3.binaryRight();
-					let value2 = Node.createHook(test1.remove(), left1.remove(), right1.remove());
+					const common = yes4.binaryLeft();
+					const left1 = yes4.binaryRight();
+					const right1 = no3.binaryRight();
+					const value2 = Node.createHook(test1.remove(), left1.remove(), right1.remove());
 					node.become(Node.createBinary(yes4.kind, common.remove(), value2));
 					this._reportCodeChange();
 					return;
@@ -593,9 +592,9 @@ export class Rewriter {
 
 				// Special-case an assignment and the assignment target, generated by if statement conversion
 				if (yes4.kind === NodeKind.ASSIGN && yes4.binaryLeft().looksTheSameAs(no3) && no3.hasNoSideEffects()) {
-					let common1 = yes4.binaryLeft();
-					let left2 = yes4.binaryRight();
-					let value3 = Node.createHook(test1.remove(), left2.remove(), no3.remove());
+					const common1 = yes4.binaryLeft();
+					const left2 = yes4.binaryRight();
+					const value3 = Node.createHook(test1.remove(), left2.remove(), no3.remove());
 					node.become(Node.createBinary(NodeKind.ASSIGN, common1.remove(), value3));
 					this._reportCodeChange();
 					return;
@@ -631,7 +630,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.NEGATIVE: {
-				let value4 = node.unaryValue();
+				const value4 = node.unaryValue();
 
 				// "- -a" => "a"
 				if (value4.kind === NodeKind.NEGATIVE) {
@@ -649,7 +648,7 @@ export class Rewriter {
 			}
 
 			case NodeKind.NOT: {
-				let value5 = node.unaryValue();
+				const value5 = node.unaryValue();
 
 				// "!!a" => "a"
 				if (value5.kind === NodeKind.NOT) {
@@ -670,8 +669,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.ADD: {
-				let left3 = node.binaryLeft();
-				let right2 = node.binaryRight();
+				const left3 = node.binaryLeft();
+				const right2 = node.binaryRight();
 
 				// "0 + a" => "a"
 				if (left3.isIntOrFloat(0)) {
@@ -695,15 +694,15 @@ export class Rewriter {
 			}
 
 			case NodeKind.CALL: {
-				let target = node.callTarget();
+				const target = node.callTarget();
 
 				// Optimize constructor calls
 				if (target.kind === NodeKind.TYPE) {
-					let type = target.resolvedType;
+					const type = target.resolvedType;
 
 					// "int(123)" => "123"
 					if (type === Type.INT) {
-						let child5 = target.nextSibling();
+						const child5 = target.nextSibling();
 
 						if (child5 !== null && child5.nextSibling() === null && child5.kind === NodeKind.INT) {
 							node.become(child5.remove());
@@ -713,7 +712,7 @@ export class Rewriter {
 
 					// "float(123)" => "123.0"
 					else if (type === Type.FLOAT) {
-						let child6 = target.nextSibling();
+						const child6 = target.nextSibling();
 
 						if (child6 !== null && child6.nextSibling() === null && child6.kind === NodeKind.INT) {
 							this._changeToFloat(node, child6.asInt());
@@ -724,8 +723,8 @@ export class Rewriter {
 					else if (type.componentType() === Type.FLOAT) {
 						for (let child7 = target.nextSibling(); child7 !== null; child7 = child7.nextSibling()) {
 							if (child7.kind === NodeKind.FLOAT) {
-								let floatValue = child7.asFloat();
-								let intValue = floatValue | 0;
+								const floatValue = child7.asFloat();
+								const intValue = floatValue | 0;
 
 								if (floatValue === intValue) {
 									this._changeToInt(child7, intValue);
@@ -738,8 +737,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.DIVIDE: {
-				let left4 = node.binaryLeft();
-				let right3 = node.binaryRight();
+				const left4 = node.binaryLeft();
+				const right3 = node.binaryRight();
 
 				// "a / 1" => "a"
 				if (right3.isIntOrFloat(1)) {
@@ -757,8 +756,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.EQUAL: {
-				let left5 = node.binaryLeft();
-				let right4 = node.binaryRight();
+				const left5 = node.binaryLeft();
+				const right4 = node.binaryRight();
 
 				// "a == a" => "true"
 				if (left5.looksTheSameAs(right4) && left5.hasNoSideEffects()) {
@@ -776,8 +775,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.GREATER_THAN: {
-				let left6 = node.binaryLeft();
-				let right5 = node.binaryRight();
+				const left6 = node.binaryLeft();
+				const right5 = node.binaryRight();
 
 				// Constant folding
 				if (left6.kind === NodeKind.INT && right5.kind === NodeKind.INT) {
@@ -789,8 +788,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.GREATER_THAN_OR_EQUAL: {
-				let left7 = node.binaryLeft();
-				let right6 = node.binaryRight();
+				const left7 = node.binaryLeft();
+				const right6 = node.binaryRight();
 
 				// "1 >= a" => "2 > a"
 				if (left7.kind === NodeKind.INT) {
@@ -816,15 +815,15 @@ export class Rewriter {
 			}
 
 			case NodeKind.INDEX: {
-				let left8 = node.binaryLeft();
-				let right7 = node.binaryRight();
-				let type1 = left8.resolvedType;
+				const left8 = node.binaryLeft();
+				const right7 = node.binaryRight();
+				const type1 = left8.resolvedType;
 
 				// Replace with a swizzle
 				if (right7.kind === NodeKind.INT) {
-					let index = right7.asInt();
+					const index = right7.asInt();
 					let bound = 0;
-					let value1 = type1;
+					const value1 = type1;
 
 					if (value1 === Type.BVEC2 || value1 === Type.IVEC2 || value1 === Type.VEC2) {
 						bound = 2;
@@ -835,7 +834,7 @@ export class Rewriter {
 					}
 
 					if (index >= 0 && index < bound) {
-						node.become(Node.createDot(left8.remove(), string_get5('xyzw', index)).withType(node.resolvedType));
+						node.become(Node.createDot(left8.remove(), 'xyzw'[index]).withType(node.resolvedType));
 						this._reportCodeChange();
 					}
 				}
@@ -843,8 +842,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.LESS_THAN: {
-				let left9 = node.binaryLeft();
-				let right8 = node.binaryRight();
+				const left9 = node.binaryLeft();
+				const right8 = node.binaryRight();
 
 				// Constant folding
 				if (left9.kind === NodeKind.INT && right8.kind === NodeKind.INT) {
@@ -856,8 +855,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.LESS_THAN_OR_EQUAL: {
-				let left10 = node.binaryLeft();
-				let right9 = node.binaryRight();
+				const left10 = node.binaryLeft();
+				const right9 = node.binaryRight();
 
 				// "1 <= a" => "0 < a"
 				if (left10.kind === NodeKind.INT) {
@@ -883,8 +882,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.LOGICAL_AND: {
-				let left11 = node.binaryLeft();
-				let right10 = node.binaryRight();
+				const left11 = node.binaryLeft();
+				const right10 = node.binaryRight();
 
 				// "true && a" => "a"
 				if (left11.kind === NodeKind.BOOL && left11.isTrue()) {
@@ -902,8 +901,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.LOGICAL_OR: {
-				let left12 = node.binaryLeft();
-				let right11 = node.binaryRight();
+				const left12 = node.binaryLeft();
+				const right11 = node.binaryRight();
 
 				// "false || a" => "a"
 				if (left12.kind === NodeKind.BOOL && left12.isFalse()) {
@@ -921,8 +920,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.LOGICAL_XOR: {
-				let left13 = node.binaryLeft();
-				let right12 = node.binaryRight();
+				const left13 = node.binaryLeft();
+				const right12 = node.binaryRight();
 
 				// Constant folding
 				if (left13.kind === NodeKind.BOOL && right12.kind === NodeKind.BOOL) {
@@ -932,8 +931,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.MULTIPLY: {
-				let left14 = node.binaryLeft();
-				let right13 = node.binaryRight();
+				const left14 = node.binaryLeft();
+				const right13 = node.binaryRight();
 
 				// "1 * a" => "a"
 				if (left14.kind === NodeKind.INT && left14.asInt() === 1) {
@@ -957,8 +956,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.NOT_EQUAL: {
-				let left15 = node.binaryLeft();
-				let right14 = node.binaryRight();
+				const left15 = node.binaryLeft();
+				const right14 = node.binaryRight();
 
 				// "a != a" => "false"
 				if (left15.looksTheSameAs(right14) && left15.hasNoSideEffects()) {
@@ -976,8 +975,8 @@ export class Rewriter {
 			}
 
 			case NodeKind.SUBTRACT: {
-				let left16 = node.binaryLeft();
-				let right15 = node.binaryRight();
+				const left16 = node.binaryLeft();
+				const right15 = node.binaryRight();
 
 				// "0 - a" => "-a"
 				if (left16.isIntOrFloat(0)) {

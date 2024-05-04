@@ -1,6 +1,5 @@
 import { LineColumn, Source } from './source.js';
 import { StringIterator, string_fromCodePoints } from '../unicode.js';
-import { string_slice22, assert, List_slice21, string_repeat } from '../native-js.js';
 
 export class FormattedRange {
 	line: string;
@@ -18,11 +17,11 @@ export class Range {
 	end: number;
 
 	toString(): string {
-		return string_slice22(this.source.contents, this.start, this.end);
+		return this.source.contents.slice(this.start, this.end);
 	}
 
 	locationString(): string {
-		let location = this.source.indexToLineColumn(this.start);
+		const location = this.source.indexToLineColumn(this.start);
 		return `${this.source.name}:${location.line + 1}:${location.column + 1}`;
 	}
 
@@ -35,16 +34,16 @@ export class Range {
 	}
 
 	format(maxLength: number): FormattedRange {
-		assert(this.source !== null);
-		let start = this.source.indexToLineColumn(this.start);
-		let end = this.source.indexToLineColumn(this.end);
+		console.assert(this.source !== null);
+		const start = this.source.indexToLineColumn(this.start);
+		const end = this.source.indexToLineColumn(this.end);
 		let line = this.source.contentsOfLine(start.line);
-		let startColumn = start.column;
-		let endColumn = end.line === start.line ? end.column : line.length;
+		const startColumn = start.column;
+		const endColumn = end.line === start.line ? end.column : line.length;
 
 		// Use a unicode iterator to count the actual code points so they don't get sliced through the middle
-		let iterator = StringIterator.INSTANCE.reset(line, 0);
-		let codePoints: Array<number> = [];
+		const iterator = StringIterator.INSTANCE.reset(line, 0);
+		const codePoints: Array<number> = [];
 		let a = 0;
 		let b = 0;
 
@@ -58,7 +57,7 @@ export class Range {
 				b = codePoints.length;
 			}
 
-			let codePoint = iterator.nextCodePoint();
+			const codePoint = iterator.nextCodePoint();
 
 			if (codePoint < 0) {
 				break;
@@ -74,15 +73,15 @@ export class Range {
 		}
 
 		// Ensure the line length doesn't exceed maxLength
-		let count = codePoints.length;
+		const count = codePoints.length;
 
 		if (maxLength > 0 && count > maxLength) {
-			let centeredWidth = Math.min(b - a, (maxLength / 2) | 0);
-			let centeredStart = Math.max(((maxLength - centeredWidth) / 2) | 0, 3);
+			const centeredWidth = Math.min(b - a, (maxLength / 2) | 0);
+			const centeredStart = Math.max(((maxLength - centeredWidth) / 2) | 0, 3);
 
 			// Left aligned
 			if (a < centeredStart) {
-				line = string_fromCodePoints(List_slice21(codePoints, 0, maxLength - 3)) + '...';
+				line = string_fromCodePoints(codePoints.slice(0, maxLength - 3)) + '...';
 
 				if (b > maxLength - 3) {
 					b = maxLength - 3;
@@ -91,16 +90,16 @@ export class Range {
 
 			// Right aligned
 			else if (count - a < maxLength - centeredStart) {
-				let offset = count - maxLength;
-				line = '...' + string_fromCodePoints(List_slice21(codePoints, offset + 3, count));
+				const offset = count - maxLength;
+				line = '...' + string_fromCodePoints(codePoints.slice(offset + 3, count));
 				a = a - offset;
 				b = b - offset;
 			}
 
 			// Center aligned
 			else {
-				let offset1 = a - centeredStart;
-				line = '...' + string_fromCodePoints(List_slice21(codePoints, offset1 + 3, offset1 + maxLength - 3)) + '...';
+				const offset1 = a - centeredStart;
+				line = '...' + string_fromCodePoints(codePoints.slice(offset1 + 3, offset1 + maxLength - 3)) + '...';
 				a = a - offset1;
 				b = b - offset1;
 
@@ -112,11 +111,11 @@ export class Range {
 			line = string_fromCodePoints(codePoints);
 		}
 
-		return new FormattedRange(line, string_repeat(' ', a) + (b - a < 2 ? '^' : string_repeat('~', b - a)));
+		return new FormattedRange(line, ' '.repeat(a) + (b - a < 2 ? '^' : '~'.repeat(b - a)));
 	}
 
 	slice(offsetStart: number, offsetEnd: number): Range {
-		assert(offsetStart >= 0 && offsetStart <= offsetEnd && offsetEnd <= this.end - this.start);
+		console.assert(offsetStart >= 0 && offsetStart <= offsetEnd && offsetEnd <= this.end - this.start);
 		return new Range(this.source, this.start + offsetStart, this.start + offsetEnd);
 	}
 
@@ -129,8 +128,8 @@ export class Range {
 	}
 
 	static span(start: Range, end: Range): Range {
-		assert(start.source === end.source);
-		assert(start.start <= end.end);
+		console.assert(start.source === end.source);
+		console.assert(start.start <= end.end);
 		return new Range(start.source, start.start, end.end);
 	}
 

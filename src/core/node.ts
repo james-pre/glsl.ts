@@ -1,4 +1,3 @@
-import { assert, List_get2 } from '../native-js.js';
 import { ExtensionBehavior } from './compiler.js';
 import { Range } from './range.js';
 import { FunctionSymbol, StructSymbol, SymbolFlags, VariableSymbol, _Symbol } from './symbol.js';
@@ -109,7 +108,7 @@ export class Node {
 	}
 
 	cloneWithoutChildren(): Node {
-		let clone = new Node(this.kind);
+		const clone = new Node(this.kind);
 		clone._copyMembersFrom(this);
 		return clone;
 	}
@@ -120,7 +119,7 @@ export class Node {
 	//  node.become(Node.createUnary(.NOT, node.cloneAndStealChildren))
 	//
 	cloneAndStealChildren(): Node {
-		let clone = this.cloneWithoutChildren();
+		const clone = this.cloneWithoutChildren();
 
 		while (this.hasChildren()) {
 			clone.appendChild(this._firstChild.remove());
@@ -130,7 +129,7 @@ export class Node {
 	}
 
 	clone(): Node {
-		let clone = this.cloneWithoutChildren();
+		const clone = this.cloneWithoutChildren();
 
 		for (let child = this._firstChild; child !== null; child = child._nextSibling) {
 			clone.appendChild(child.clone());
@@ -148,7 +147,7 @@ export class Node {
 			return;
 		}
 
-		assert(node._parent === null);
+		console.assert(node._parent === null);
 		this._copyMembersFrom(node);
 		this.removeChildren();
 		this.appendChildrenFrom(node);
@@ -195,7 +194,7 @@ export class Node {
 	}
 
 	childAt(index: number): Node {
-		assert(0 <= index && index < this.childCount());
+		console.assert(0 <= index && index < this.childCount());
 		let child = this._firstChild;
 
 		while (index !== 0) {
@@ -251,10 +250,10 @@ export class Node {
 			return this;
 		}
 
-		assert(node !== this);
-		assert(node._parent === null);
-		assert(node._previousSibling === null);
-		assert(node._nextSibling === null);
+		console.assert(node !== this);
+		console.assert(node._parent === null);
+		console.assert(node._previousSibling === null);
+		console.assert(node._nextSibling === null);
 		node._parent = this;
 
 		if (this.hasChildren()) {
@@ -269,7 +268,7 @@ export class Node {
 	}
 
 	appendChildrenFrom(node: Node): Node {
-		assert(node !== this);
+		console.assert(node !== this);
 
 		while (node.hasChildren()) {
 			this.appendChild(node._firstChild.remove());
@@ -279,21 +278,21 @@ export class Node {
 	}
 
 	remove(): Node {
-		assert(this._parent !== null);
+		console.assert(this._parent !== null);
 
 		if (this._previousSibling !== null) {
-			assert(this._previousSibling._nextSibling === this);
+			console.assert(this._previousSibling._nextSibling === this);
 			this._previousSibling._nextSibling = this._nextSibling;
 		} else {
-			assert(this._parent._firstChild === this);
+			console.assert(this._parent._firstChild === this);
 			this._parent._firstChild = this._nextSibling;
 		}
 
 		if (this._nextSibling !== null) {
-			assert(this._nextSibling._previousSibling === this);
+			console.assert(this._nextSibling._previousSibling === this);
 			this._nextSibling._previousSibling = this._previousSibling;
 		} else {
-			assert(this._parent._lastChild === this);
+			console.assert(this._parent._lastChild === this);
 			this._parent._lastChild = this._previousSibling;
 		}
 
@@ -310,28 +309,28 @@ export class Node {
 	}
 
 	replaceWith(node: Node): Node {
-		assert(node !== this);
-		assert(this._parent !== null);
-		assert(node._parent === null);
-		assert(node._previousSibling === null);
-		assert(node._nextSibling === null);
+		console.assert(node !== this);
+		console.assert(this._parent !== null);
+		console.assert(node._parent === null);
+		console.assert(node._previousSibling === null);
+		console.assert(node._nextSibling === null);
 		node._parent = this._parent;
 		node._previousSibling = this._previousSibling;
 		node._nextSibling = this._nextSibling;
 
 		if (this._previousSibling !== null) {
-			assert(this._previousSibling._nextSibling === this);
+			console.assert(this._previousSibling._nextSibling === this);
 			this._previousSibling._nextSibling = node;
 		} else {
-			assert(this._parent._firstChild === this);
+			console.assert(this._parent._firstChild === this);
 			this._parent._firstChild = node;
 		}
 
 		if (this._nextSibling !== null) {
-			assert(this._nextSibling._previousSibling === this);
+			console.assert(this._nextSibling._previousSibling === this);
 			this._nextSibling._previousSibling = node;
 		} else {
-			assert(this._parent._lastChild === this);
+			console.assert(this._parent._lastChild === this);
 			this._parent._lastChild = node;
 		}
 
@@ -346,11 +345,11 @@ export class Node {
 			return this;
 		}
 
-		assert(before !== after);
-		assert(before._parent === null);
-		assert(before._previousSibling === null);
-		assert(before._nextSibling === null);
-		assert(after === null || after._parent === this);
+		console.assert(before !== after);
+		console.assert(before._parent === null);
+		console.assert(before._previousSibling === null);
+		console.assert(before._nextSibling === null);
+		console.assert(after === null || after._parent === this);
 
 		if (after === null) {
 			return this.appendChild(before);
@@ -361,10 +360,10 @@ export class Node {
 		before._nextSibling = after;
 
 		if (after._previousSibling !== null) {
-			assert(after === after._previousSibling._nextSibling);
+			console.assert(after === after._previousSibling._nextSibling);
 			after._previousSibling._nextSibling = before;
 		} else {
-			assert(after === this._firstChild);
+			console.assert(after === this._firstChild);
 			this._firstChild = before;
 		}
 
@@ -406,19 +405,19 @@ export class Node {
 			// Check whether this node is an "inout" argument in a function call.
 			// But only do this if the function call was resolved correctly.
 			if (this.parent().kind === NodeKind.CALL && this.parent().resolvedType !== Type.ERROR) {
-				let callTarget = this.parent().callTarget();
-				let symbol = callTarget.symbol;
+				const callTarget = this.parent().callTarget();
+				const symbol = callTarget.symbol;
 
 				if (symbol !== null && symbol.isFunction()) {
-					let _function = symbol.asFunction();
+					const _function = symbol.asFunction();
 					let i = 0;
 
 					for (let child = callTarget.nextSibling(); child !== null; child = child.nextSibling()) {
 						if (child === this) {
-							return (SymbolFlags.INOUT & List_get2(_function._arguments, i).flags) !== 0;
+							return (SymbolFlags.INOUT & _function._arguments[i].flags) !== 0;
 						}
 
-						i = i + 1;
+						i++;
 					}
 				}
 			}
@@ -452,7 +451,7 @@ export class Node {
 	}
 
 	hasNoSideEffects(): boolean {
-		assert(NodeKind_isExpression(this.kind));
+		console.assert(NodeKind_isExpression(this.kind));
 
 		switch (this.kind) {
 			case NodeKind.BOOL:
@@ -485,7 +484,7 @@ export class Node {
 	}
 
 	invertBooleanCondition(): void {
-		assert(NodeKind_isExpression(this.kind));
+		console.assert(NodeKind_isExpression(this.kind));
 
 		switch (this.kind) {
 			case NodeKind.BOOL: {
@@ -646,13 +645,13 @@ export class Node {
 	}
 
 	static createDoWhile(body: Node, test: Node): Node {
-		assert(NodeKind_isStatement(body.kind));
-		assert(NodeKind_isExpression(test.kind));
+		console.assert(NodeKind_isStatement(body.kind));
+		console.assert(NodeKind_isExpression(test.kind));
 		return new Node(NodeKind.DO_WHILE).appendChild(body).appendChild(test);
 	}
 
 	static createExpression(value: Node): Node {
-		assert(NodeKind_isExpression(value.kind));
+		console.assert(NodeKind_isExpression(value.kind));
 		return new Node(NodeKind.EXPRESSION).appendChild(value);
 	}
 
@@ -661,10 +660,10 @@ export class Node {
 	}
 
 	static createFor(setup: Node, test: Node, update: Node, body: Node): Node {
-		assert(setup === null || NodeKind_isExpression(setup.kind) || setup.kind === NodeKind.VARIABLES);
-		assert(test === null || NodeKind_isExpression(test.kind));
-		assert(update === null || NodeKind_isExpression(update.kind));
-		assert(NodeKind_isStatement(body.kind));
+		console.assert(setup === null || NodeKind_isExpression(setup.kind) || setup.kind === NodeKind.VARIABLES);
+		console.assert(test === null || NodeKind_isExpression(test.kind));
+		console.assert(update === null || NodeKind_isExpression(update.kind));
+		console.assert(NodeKind_isStatement(body.kind));
 		return new Node(NodeKind.FOR)
 			.appendChild(setup === null ? Node.createSequence() : setup)
 			.appendChild(test === null ? Node.createSequence() : test)
@@ -677,9 +676,9 @@ export class Node {
 	}
 
 	static createIf(test: Node, yes: Node, no: Node): Node {
-		assert(NodeKind_isExpression(test.kind));
-		assert(NodeKind_isStatement(yes.kind));
-		assert(no === null || NodeKind_isStatement(no.kind));
+		console.assert(NodeKind_isExpression(test.kind));
+		console.assert(NodeKind_isStatement(yes.kind));
+		console.assert(no === null || NodeKind_isStatement(no.kind));
 		return new Node(NodeKind.IF).appendChild(test).appendChild(yes).appendChild(no);
 	}
 
@@ -688,18 +687,18 @@ export class Node {
 	}
 
 	static createPrecision(flags: number, type: Node): Node {
-		assert(NodeKind_isExpression(type.kind));
+		console.assert(NodeKind_isExpression(type.kind));
 		return new Node(NodeKind.PRECISION).withInt(flags).appendChild(type);
 	}
 
 	static createReturn(value: Node): Node {
-		assert(value === null || NodeKind_isExpression(value.kind));
+		console.assert(value === null || NodeKind_isExpression(value.kind));
 		return new Node(NodeKind.RETURN).appendChild(value);
 	}
 
 	static createStruct(symbol: StructSymbol, block: Node, variables: Node): Node {
-		assert(block.kind === NodeKind.STRUCT_BLOCK);
-		assert(variables === null || variables.kind === NodeKind.VARIABLES);
+		console.assert(block.kind === NodeKind.STRUCT_BLOCK);
+		console.assert(variables === null || variables.kind === NodeKind.VARIABLES);
 		return new Node(NodeKind.STRUCT)
 			.withSymbol(symbol as _Symbol)
 			.appendChild(block)
@@ -707,7 +706,7 @@ export class Node {
 	}
 
 	static createVariables(flags: number, type: Node): Node {
-		assert(NodeKind_isExpression(type.kind));
+		console.assert(NodeKind_isExpression(type.kind));
 		return new Node(NodeKind.VARIABLES).withInt(flags).appendChild(type);
 	}
 
@@ -716,13 +715,13 @@ export class Node {
 	}
 
 	static createWhile(test: Node, body: Node): Node {
-		assert(NodeKind_isExpression(test.kind));
-		assert(NodeKind_isStatement(body.kind));
+		console.assert(NodeKind_isExpression(test.kind));
+		console.assert(NodeKind_isStatement(body.kind));
 		return new Node(NodeKind.WHILE).appendChild(test).appendChild(body);
 	}
 
 	static createCall(value: Node): Node {
-		assert(NodeKind_isExpression(value.kind));
+		console.assert(NodeKind_isExpression(value.kind));
 		return new Node(NodeKind.CALL).appendChild(value);
 	}
 
@@ -731,15 +730,15 @@ export class Node {
 	}
 
 	static createDot(value: Node, text: string): Node {
-		assert(NodeKind_isExpression(value.kind));
-		assert(text !== null);
+		console.assert(NodeKind_isExpression(value.kind));
+		console.assert(text !== null);
 		return new Node(NodeKind.DOT).appendChild(value).withText(text);
 	}
 
 	static createHook(test: Node, yes: Node, no: Node): Node {
-		assert(NodeKind_isExpression(test.kind));
-		assert(NodeKind_isExpression(yes.kind));
-		assert(NodeKind_isExpression(no.kind));
+		console.assert(NodeKind_isExpression(test.kind));
+		console.assert(NodeKind_isExpression(yes.kind));
+		console.assert(NodeKind_isExpression(no.kind));
 		return new Node(NodeKind.HOOK).appendChild(test).appendChild(yes).appendChild(no);
 	}
 
@@ -776,245 +775,245 @@ export class Node {
 	}
 
 	static createUnary(kind: NodeKind, value: Node): Node {
-		assert(NodeKind_isUnary(kind));
+		console.assert(NodeKind_isUnary(kind));
 		return new Node(kind).appendChild(value);
 	}
 
 	static createBinary(kind: NodeKind, left: Node, right: Node): Node {
-		assert(NodeKind_isBinary(kind));
+		console.assert(NodeKind_isBinary(kind));
 		return new Node(kind).appendChild(left).appendChild(right);
 	}
 
 	variableInitializer(): Node {
-		assert(this.kind === NodeKind.VARIABLE);
-		assert(this.childCount() <= 1);
+		console.assert(this.kind === NodeKind.VARIABLE);
+		console.assert(this.childCount() <= 1);
 		return this._firstChild;
 	}
 
 	doWhileBody(): Node {
-		assert(this.kind === NodeKind.DO_WHILE);
-		assert(this.childCount() === 2);
-		assert(NodeKind_isStatement(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.DO_WHILE);
+		console.assert(this.childCount() === 2);
+		console.assert(NodeKind_isStatement(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	doWhileTest(): Node {
-		assert(this.kind === NodeKind.DO_WHILE);
-		assert(this.childCount() === 2);
-		assert(NodeKind_isExpression(this._lastChild.kind));
+		console.assert(this.kind === NodeKind.DO_WHILE);
+		console.assert(this.childCount() === 2);
+		console.assert(NodeKind_isExpression(this._lastChild.kind));
 		return this._lastChild;
 	}
 
 	expressionValue(): Node {
-		assert(this.kind === NodeKind.EXPRESSION);
-		assert(this.childCount() === 1);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.EXPRESSION);
+		console.assert(this.childCount() === 1);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	extensionName(): string {
-		assert(this.kind === NodeKind.EXTENSION);
-		assert(this.childCount() === 0);
-		assert(this._text !== null);
+		console.assert(this.kind === NodeKind.EXTENSION);
+		console.assert(this.childCount() === 0);
+		console.assert(this._text !== null);
 		return this._text;
 	}
 
 	extensionBehavior(): ExtensionBehavior {
-		assert(this.kind === NodeKind.EXTENSION);
-		assert(this.childCount() === 0);
+		console.assert(this.kind === NodeKind.EXTENSION);
+		console.assert(this.childCount() === 0);
 		return this._literal | 0;
 	}
 
 	forSetup(): Node {
-		assert(this.kind === NodeKind.FOR);
-		assert(this.childCount() === 4);
-		assert(NodeKind_isExpression(this._firstChild.kind) || this._firstChild.kind === NodeKind.VARIABLES);
+		console.assert(this.kind === NodeKind.FOR);
+		console.assert(this.childCount() === 4);
+		console.assert(NodeKind_isExpression(this._firstChild.kind) || this._firstChild.kind === NodeKind.VARIABLES);
 		return this._firstChild.isEmptySequence() ? null : this._firstChild;
 	}
 
 	forTest(): Node {
-		assert(this.kind === NodeKind.FOR);
-		assert(this.childCount() === 4);
-		assert(NodeKind_isExpression(this._firstChild._nextSibling.kind) || this._firstChild._nextSibling.kind === NodeKind.VARIABLES);
+		console.assert(this.kind === NodeKind.FOR);
+		console.assert(this.childCount() === 4);
+		console.assert(NodeKind_isExpression(this._firstChild._nextSibling.kind) || this._firstChild._nextSibling.kind === NodeKind.VARIABLES);
 		return this._firstChild._nextSibling.isEmptySequence() ? null : this._firstChild._nextSibling;
 	}
 
 	forUpdate(): Node {
-		assert(this.kind === NodeKind.FOR);
-		assert(this.childCount() === 4);
-		assert(NodeKind_isExpression(this._lastChild._previousSibling.kind));
+		console.assert(this.kind === NodeKind.FOR);
+		console.assert(this.childCount() === 4);
+		console.assert(NodeKind_isExpression(this._lastChild._previousSibling.kind));
 		return this._lastChild._previousSibling.isEmptySequence() ? null : this._lastChild._previousSibling;
 	}
 
 	forBody(): Node {
-		assert(this.kind === NodeKind.FOR);
-		assert(this.childCount() === 4);
-		assert(NodeKind_isStatement(this._lastChild.kind));
+		console.assert(this.kind === NodeKind.FOR);
+		console.assert(this.childCount() === 4);
+		console.assert(NodeKind_isStatement(this._lastChild.kind));
 		return this._lastChild;
 	}
 
 	ifTest(): Node {
-		assert(this.kind === NodeKind.IF);
-		assert(this.childCount() === 2 || this.childCount() === 3);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.IF);
+		console.assert(this.childCount() === 2 || this.childCount() === 3);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	ifTrue(): Node {
-		assert(this.kind === NodeKind.IF);
-		assert(this.childCount() === 2 || this.childCount() === 3);
-		assert(NodeKind_isStatement(this._firstChild._nextSibling.kind));
+		console.assert(this.kind === NodeKind.IF);
+		console.assert(this.childCount() === 2 || this.childCount() === 3);
+		console.assert(NodeKind_isStatement(this._firstChild._nextSibling.kind));
 		return this._firstChild._nextSibling;
 	}
 
 	ifFalse(): Node {
-		assert(this.kind === NodeKind.IF);
-		assert(this.childCount() === 2 || this.childCount() === 3);
-		assert(this._firstChild._nextSibling._nextSibling === null || NodeKind_isStatement(this._firstChild._nextSibling._nextSibling.kind));
+		console.assert(this.kind === NodeKind.IF);
+		console.assert(this.childCount() === 2 || this.childCount() === 3);
+		console.assert(this._firstChild._nextSibling._nextSibling === null || NodeKind_isStatement(this._firstChild._nextSibling._nextSibling.kind));
 		return this._firstChild._nextSibling._nextSibling;
 	}
 
 	precisionFlag(): SymbolFlags {
-		assert(this.kind === NodeKind.PRECISION);
-		assert(this.childCount() === 1);
+		console.assert(this.kind === NodeKind.PRECISION);
+		console.assert(this.childCount() === 1);
 		return this._literal | 0;
 	}
 
 	precisionType(): Node {
-		assert(this.kind === NodeKind.PRECISION);
-		assert(this.childCount() === 1);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.PRECISION);
+		console.assert(this.childCount() === 1);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	returnValue(): Node {
-		assert(this.kind === NodeKind.RETURN);
-		assert(this.childCount() <= 1);
-		assert(this._firstChild === null || NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.RETURN);
+		console.assert(this.childCount() <= 1);
+		console.assert(this._firstChild === null || NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	variablesFlags(): SymbolFlags {
-		assert(this.kind === NodeKind.VARIABLES);
-		assert(this.childCount() >= 1);
+		console.assert(this.kind === NodeKind.VARIABLES);
+		console.assert(this.childCount() >= 1);
 		return this._literal | 0;
 	}
 
 	variablesType(): Node {
-		assert(this.kind === NodeKind.VARIABLES);
-		assert(this.childCount() >= 1);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.VARIABLES);
+		console.assert(this.childCount() >= 1);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	structBlock(): Node {
-		assert(this.kind === NodeKind.STRUCT);
-		assert(this.childCount() === 1 || this.childCount() === 2);
-		assert(this._firstChild.kind === NodeKind.STRUCT_BLOCK);
+		console.assert(this.kind === NodeKind.STRUCT);
+		console.assert(this.childCount() === 1 || this.childCount() === 2);
+		console.assert(this._firstChild.kind === NodeKind.STRUCT_BLOCK);
 		return this._firstChild;
 	}
 
 	structVariables(): Node {
-		assert(this.kind === NodeKind.STRUCT);
-		assert(this.childCount() === 1 || this.childCount() === 2);
-		assert(this._firstChild._nextSibling === null || this._firstChild._nextSibling.kind === NodeKind.VARIABLES);
+		console.assert(this.kind === NodeKind.STRUCT);
+		console.assert(this.childCount() === 1 || this.childCount() === 2);
+		console.assert(this._firstChild._nextSibling === null || this._firstChild._nextSibling.kind === NodeKind.VARIABLES);
 		return this._firstChild._nextSibling;
 	}
 
 	versionNumber(): number {
-		assert(this.kind === NodeKind.VERSION);
-		assert(this.childCount() === 0);
+		console.assert(this.kind === NodeKind.VERSION);
+		console.assert(this.childCount() === 0);
 		return this._literal | 0;
 	}
 
 	whileTest(): Node {
-		assert(this.kind === NodeKind.WHILE);
-		assert(this.childCount() === 2);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.WHILE);
+		console.assert(this.childCount() === 2);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	whileBody(): Node {
-		assert(this.kind === NodeKind.WHILE);
-		assert(this.childCount() === 2);
-		assert(NodeKind_isStatement(this._lastChild.kind));
+		console.assert(this.kind === NodeKind.WHILE);
+		console.assert(this.childCount() === 2);
+		console.assert(NodeKind_isStatement(this._lastChild.kind));
 		return this._lastChild;
 	}
 
 	callTarget(): Node {
-		assert(this.kind === NodeKind.CALL);
-		assert(this.childCount() >= 1);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.CALL);
+		console.assert(this.childCount() >= 1);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	dotTarget(): Node {
-		assert(this.kind === NodeKind.DOT);
-		assert(this.childCount() === 1);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.DOT);
+		console.assert(this.childCount() === 1);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	hookTest(): Node {
-		assert(this.kind === NodeKind.HOOK);
-		assert(this.childCount() === 3);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(this.kind === NodeKind.HOOK);
+		console.assert(this.childCount() === 3);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	hookTrue(): Node {
-		assert(this.kind === NodeKind.HOOK);
-		assert(this.childCount() === 3);
-		assert(NodeKind_isExpression(this._firstChild._nextSibling.kind));
+		console.assert(this.kind === NodeKind.HOOK);
+		console.assert(this.childCount() === 3);
+		console.assert(NodeKind_isExpression(this._firstChild._nextSibling.kind));
 		return this._firstChild._nextSibling;
 	}
 
 	hookFalse(): Node {
-		assert(this.kind === NodeKind.HOOK);
-		assert(this.childCount() === 3);
-		assert(NodeKind_isExpression(this._lastChild.kind));
+		console.assert(this.kind === NodeKind.HOOK);
+		console.assert(this.childCount() === 3);
+		console.assert(NodeKind_isExpression(this._lastChild.kind));
 		return this._lastChild;
 	}
 
 	asString(): string {
-		assert(this.kind === NodeKind.DOT);
-		assert(this._text !== null);
+		console.assert(this.kind === NodeKind.DOT);
+		console.assert(this._text !== null);
 		return this._text;
 	}
 
 	asBool(): boolean {
-		assert(this.kind === NodeKind.BOOL);
+		console.assert(this.kind === NodeKind.BOOL);
 		return !!this._literal;
 	}
 
 	asFloat(): number {
-		assert(this.kind === NodeKind.FLOAT);
+		console.assert(this.kind === NodeKind.FLOAT);
 		return this._literal;
 	}
 
 	asInt(): number {
-		assert(this.kind === NodeKind.INT);
+		console.assert(this.kind === NodeKind.INT);
 		return this._literal | 0;
 	}
 
 	unaryValue(): Node {
-		assert(NodeKind_isUnary(this.kind));
-		assert(this.childCount() === 1);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(NodeKind_isUnary(this.kind));
+		console.assert(this.childCount() === 1);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	binaryLeft(): Node {
-		assert(NodeKind_isBinary(this.kind));
-		assert(this.childCount() === 2);
-		assert(NodeKind_isExpression(this._firstChild.kind));
+		console.assert(NodeKind_isBinary(this.kind));
+		console.assert(this.childCount() === 2);
+		console.assert(NodeKind_isExpression(this._firstChild.kind));
 		return this._firstChild;
 	}
 
 	binaryRight(): Node {
-		assert(NodeKind_isBinary(this.kind));
-		assert(this.childCount() === 2);
-		assert(NodeKind_isExpression(this._lastChild.kind));
+		console.assert(NodeKind_isBinary(this.kind));
+		console.assert(this.childCount() === 2);
+		console.assert(NodeKind_isExpression(this._lastChild.kind));
 		return this._lastChild;
 	}
 

@@ -1,17 +1,3 @@
-import { int_compare1 } from '../native.js';
-import {
-	List_first,
-	List_get2,
-	List_removeIf,
-	List_set1,
-	StringMap_get11,
-	StringMap_set2,
-	assert,
-	string_compare2,
-	string_get13,
-	string_get5,
-	string_slice22,
-} from '../native-js.js';
 import { Emitter } from './emitter.js';
 import { Node, NodeKind } from './node.js';
 import { Range } from './range.js';
@@ -19,6 +5,7 @@ import { Source } from './source.js';
 import { strings, type } from './swizzle.js';
 import { FunctionSymbol, StructSymbol, SymbolFlags_toString, VariableSymbol, _Symbol } from './symbol.js';
 import { Type } from './type.js';
+import { compare, compare_string } from './utils.js';
 
 export class Tooltip {
 	code: string;
@@ -190,7 +177,7 @@ export class SymbolsQuery {
 
 			case NodeKind.VARIABLES: {
 				for (let child = node.variablesType().nextSibling(); child !== null; child = child.nextSibling()) {
-					assert(child.kind === NodeKind.VARIABLE);
+					console.assert(child.kind === NodeKind.VARIABLE);
 					this._collectSymbol(child.symbol);
 				}
 				break;
@@ -224,7 +211,7 @@ export class RenameQuery {
 	symbol: _Symbol;
 
 	run(global: Node): void {
-		let query = new SymbolQuery(this.source, this.index);
+		const query = new SymbolQuery(this.source, this.index);
 		query.run(global);
 		this.symbol = query.symbol;
 
@@ -234,10 +221,10 @@ export class RenameQuery {
 			// Remove overlapping ranges just in case
 			let current: Range = null;
 			this.ranges.sort((a: Range, b: Range) => {
-				return a.source === b.source ? int_compare1(a.start, b.start) : string_compare2(a.source.name, b.source.name);
+				return a.source === b.source ? compare(a.start, b.start) : compare_string(b.source.name, a.source.name);
 			});
-			List_removeIf(this.ranges, (range: Range) => {
-				let previous = current;
+			this.ranges = this.ranges.filter((range: Range) => {
+				const previous = current;
 				current = range;
 				return previous !== null && current.overlaps(previous);
 			});
@@ -365,19 +352,19 @@ export class CompletionQuery {
 		let completion: Completion = null;
 
 		if (this._map.has(name)) {
-			completion = StringMap_get11(this._map, name);
+			completion = this._map.get(name);
 		} else {
 			completion = new Completion(kind, name);
 			this.completions.push(completion);
-			StringMap_set2(this._map, name, completion);
+			this._map.set(name, completion);
 		}
 
 		return completion;
 	}
 
 	_addSymbolCompletion(symbol: _Symbol): void {
-		let kind = symbol.isFunction() ? 'function' : symbol.isStruct() ? 'struct' : 'variable';
-		let completion = this._addTextualCompletion(kind, symbol.name);
+		const kind = symbol.isFunction() ? 'function' : symbol.isStruct() ? 'struct' : 'variable';
+		const completion = this._addTextualCompletion(kind, symbol.name);
 
 		if (completion.detail !== '') {
 			completion.detail += '\n';
@@ -393,14 +380,14 @@ export class CompletionQuery {
 			return false;
 		}
 
-		let touches = this._touches(node.range);
+		const touches = this._touches(node.range);
 
 		switch (node.kind) {
 			case NodeKind.FUNCTION: {
 				this._addSymbolCompletion(node.symbol);
 
 				if (touches) {
-					let _function = node.symbol.asFunction();
+					const _function = node.symbol.asFunction();
 					this._addTextualCompletion('keyword', 'discard');
 					this._addTextualCompletion('keyword', 'return');
 
@@ -434,12 +421,12 @@ export class CompletionQuery {
 			}
 
 			case NodeKind.DOT: {
-				let dotTarget = node.dotTarget();
+				const dotTarget = node.dotTarget();
 
 				if (touches && !this._touches(dotTarget.range)) {
 					this.completions = [];
-					let type = dotTarget.resolvedType;
-					let value = type;
+					const type = dotTarget.resolvedType;
+					const value = type;
 
 					if (
 						value === Type.BVEC2 ||
@@ -453,10 +440,10 @@ export class CompletionQuery {
 						value === Type.VEC4
 					) {
 						for (const set of strings(type.componentCount())) {
-							for (let count = 1; count <= 4; count = count + 1) {
-								let counters: Array<number> = [];
+							for (let count = 1; count <= 4; count++) {
+								const counters: Array<number> = [];
 
-								for (let i = 0; i < count; i = i + 1) {
+								for (let i = 0; i < count; i++) {
 									counters.push(0);
 								}
 
@@ -464,33 +451,33 @@ export class CompletionQuery {
 								while (true) {
 									let name = '';
 
-									for (let i1 = 0; i1 < count; i1 = i1 + 1) {
-										name += string_get5(set, List_get2(counters, i1));
+									for (let i = 0; i < count; i++) {
+										name += set[counters[i]];
 									}
 
-									let symbol = type(type.componentType(), name.length).symbol;
+									const symbol = type(type.componentType(), name.length).symbol;
 									this._addTextualCompletion('variable', name).detail = `${symbol.name} ${name};`;
 
 									// Increment and carry
-									let i2 = 0;
+									let i = 0;
 
-									while (i2 < count) {
-										let counter = List_get2(counters, i2);
+									while (i < count) {
+										let counter = counters[i];
 
-										if ((counter = counter + 1) === set.length) {
+										if (++counter === set.length) {
 											counter = 0;
 										}
 
-										List_set1(counters, i2, counter);
+										counters[i] = counter;
 
 										if (counter !== 0) {
 											break;
 										}
 
-										i2 = i2 + 1;
+										i++;
 									}
 
-									if (i2 === count) {
+									if (i === count) {
 										break;
 									}
 								}
@@ -576,20 +563,20 @@ export class SignatureQuery {
 			}
 
 			case NodeKind.CALL: {
-				let callTarget = node.callTarget();
+				const callTarget = node.callTarget();
 
 				if (!this._touches(callTarget.range)) {
-					let firstArgument = callTarget.nextSibling();
-					let type = callTarget.resolvedType;
-					let symbol = type.symbol;
-					let _arguments: Array<Node> = [];
+					const firstArgument = callTarget.nextSibling();
+					const type = callTarget.resolvedType;
+					const symbol = type.symbol;
+					const _arguments: Array<Node> = [];
 
 					for (let arg = firstArgument; arg !== null; arg = arg.nextSibling()) {
 						_arguments.push(arg);
 					}
 
 					if (symbol.isFunction()) {
-						let overloads: Array<FunctionSymbol> = [];
+						const overloads: Array<FunctionSymbol> = [];
 
 						// Collect all relevant overloads but ignore forward-declared functions that also have an implementation
 						for (let overload = symbol.asFunction(); overload !== null; overload = overload.previousOverload) {
@@ -620,16 +607,16 @@ export class SignatureQuery {
 							// Start off with all overloads
 							let filteredOverloads: Array<number> = [];
 
-							for (let i = 0; i < overloads.length; i = i + 1) {
+							for (let i = 0; i < overloads.length; i++) {
 								filteredOverloads.push(i);
 							}
 
 							// Try filtering by argument count
 							for (let limit = _arguments.length; limit > 0; limit = limit - 1) {
-								let nextFilteredOverloads: Array<number> = [];
+								const nextFilteredOverloads: Array<number> = [];
 
 								for (const index of filteredOverloads) {
-									if (List_get2(overloads, index)._arguments.length >= limit) {
+									if (overloads[index]._arguments.length >= limit) {
 										nextFilteredOverloads.push(index);
 									}
 								}
@@ -642,13 +629,12 @@ export class SignatureQuery {
 
 							// Narrow down by argument types
 							if (filteredOverloads.length > 1) {
-								let nextFilteredOverloads1 = filteredOverloads.slice();
-								List_removeIf(nextFilteredOverloads1, (overloadIndex: number) => {
-									let fromArguments = List_get2(overloads, overloadIndex)._arguments;
+								let nextFilteredOverloads = filteredOverloads.slice().filter((overloadIndex: number) => {
+									const fromArguments = overloads[overloadIndex]._arguments;
 
-									for (let i = 0, count = Math.min(fromArguments.length, _arguments.length); i < count; i = i + 1) {
-										let from = List_get2(fromArguments, i).type.resolvedType;
-										let to = List_get2(_arguments, i).resolvedType;
+									for (let i = 0, count = Math.min(fromArguments.length, _arguments.length); i < count; i++) {
+										const from = fromArguments[i].type.resolvedType;
+										const to = _arguments[i].resolvedType;
 
 										if (to !== Type.ERROR && from !== to) {
 											return true;
@@ -659,16 +645,16 @@ export class SignatureQuery {
 								});
 
 								// Narrow down by argument types with "conversions" to get better error messages
-								if (nextFilteredOverloads1.length === 0) {
-									nextFilteredOverloads1 = filteredOverloads.slice();
-									List_removeIf(nextFilteredOverloads1, (overloadIndex: number) => {
-										let fromArguments = List_get2(overloads, overloadIndex)._arguments;
+								if (nextFilteredOverloads.length === 0) {
+									nextFilteredOverloads = filteredOverloads.slice();
+									nextFilteredOverloads = nextFilteredOverloads.filter((overloadIndex: number) => {
+										const fromArguments = overloads[overloadIndex]._arguments;
 
-										for (let i = 0, count = Math.min(fromArguments.length, _arguments.length); i < count; i = i + 1) {
-											let from = List_get2(fromArguments, i).type.resolvedType;
-											let to = List_get2(_arguments, i).resolvedType;
-											let fromSize = from.componentCount();
-											let toSize = to.componentCount();
+										for (let i = 0, count = Math.min(fromArguments.length, _arguments.length); i < count; i++) {
+											const from = fromArguments[i].type.resolvedType;
+											const to = _arguments[i].resolvedType;
+											const fromSize = from.componentCount();
+											const toSize = to.componentCount();
 
 											if (to !== Type.ERROR && from !== to && (fromSize === 0 || toSize === 0 || fromSize !== toSize)) {
 												return true;
@@ -679,20 +665,20 @@ export class SignatureQuery {
 									});
 								}
 
-								if (!(nextFilteredOverloads1.length === 0)) {
-									filteredOverloads = nextFilteredOverloads1;
+								if (!(nextFilteredOverloads.length === 0)) {
+									filteredOverloads = nextFilteredOverloads;
 								}
 							}
 
 							if (!(filteredOverloads.length === 0)) {
-								this.activeSignature = List_get2(filteredOverloads, 0);
+								this.activeSignature = filteredOverloads[0];
 							}
 						}
 					}
 
 					if (symbol.isStruct() && type.componentType() === null) {
 						// Generate the constructor call signature
-						let fields = symbol.asStruct().variables.map<string>((arg: VariableSymbol) => {
+						const fields = symbol.asStruct().variables.map<string>((arg: VariableSymbol) => {
 							return _variableTooltipText(arg);
 						});
 						this.signatures.push(new Signature(`${symbol.name}(${fields.join(', ')});`, fields, _leadingCommentsToMarkdown(symbol.comments)));
@@ -745,9 +731,9 @@ export function constantValueToString(node: Node): string {
 		}
 
 		case NodeKind.CALL: {
-			assert(node.callTarget().kind === NodeKind.TYPE);
-			assert(node.callTarget().resolvedType === node.resolvedType);
-			let callTarget = node.callTarget();
+			console.assert(node.callTarget().kind === NodeKind.TYPE);
+			console.assert(node.callTarget().resolvedType === node.resolvedType);
+			const callTarget = node.callTarget();
 			let text = `${node.resolvedType}(`;
 
 			for (let child = callTarget.nextSibling(); child !== null; child = child.nextSibling()) {
@@ -767,7 +753,7 @@ export function constantValueToString(node: Node): string {
 
 export function _tooltipForSymbol(symbol: _Symbol): string {
 	if (symbol.isStruct()) {
-		let struct = symbol.asStruct();
+		const struct = symbol.asStruct();
 		let text = `${SymbolFlags_toString(struct.flags)}struct ${symbol.name}`;
 
 		if (!struct.isNative()) {
@@ -784,11 +770,11 @@ export function _tooltipForSymbol(symbol: _Symbol): string {
 	}
 
 	if (symbol.isVariable()) {
-		let variable1 = symbol.asVariable();
+		const variable1 = symbol.asVariable();
 		let text1 = _variableTooltipText(variable1);
 
 		if (variable1.constantValue !== null) {
-			let constantValue = constantValueToString(variable1.constantValue);
+			const constantValue = constantValueToString(variable1.constantValue);
 
 			if (constantValue !== null) {
 				text1 += ' = ' + constantValue;
@@ -799,11 +785,11 @@ export function _tooltipForSymbol(symbol: _Symbol): string {
 	}
 
 	if (symbol.isFunction()) {
-		let _function = symbol.asFunction();
+		const _function = symbol.asFunction();
 		let text2 = `${SymbolFlags_toString(_function.flags)}${_function.returnType.resolvedType} ${symbol.name}(`;
 
 		for (const argument of _function._arguments) {
-			if (argument !== List_first(_function._arguments)) {
+			if (argument !== _function._arguments[0]) {
 				text2 += ', ';
 			}
 
@@ -813,12 +799,12 @@ export function _tooltipForSymbol(symbol: _Symbol): string {
 		return text2 + ');';
 	}
 
-	assert(false);
+	console.assert(false);
 	return null;
 }
 
 export function _variableTooltipText(variable: VariableSymbol): string {
-	let type = variable.type.resolvedType;
+	const type = variable.type.resolvedType;
 	let text = `${SymbolFlags_toString(variable.flags)}${type.isArrayOf !== null ? type.isArrayOf : type} ${variable.name}`;
 
 	if (type.isArrayOf !== null) {
@@ -845,11 +831,11 @@ export function _leadingCommentsToMarkdown(comments: Array<string>): string {
 			}
 
 			// Trim leading and trailing whitespace
-			while (start < end && string_get13(comment, start) === 32) {
+			while (start < end && comment.charCodeAt(start) === 32) {
 				start = start + 1;
 			}
 
-			while (end > start && string_get13(comment, end - 1) === 32) {
+			while (end > start && comment.charCodeAt(end - 1) === 32) {
 				end = end - 1;
 			}
 
@@ -858,7 +844,7 @@ export function _leadingCommentsToMarkdown(comments: Array<string>): string {
 				markdown += '\n';
 			}
 
-			markdown += string_slice22(comment, start, end);
+			markdown += comment.slice(start, end);
 		}
 	}
 

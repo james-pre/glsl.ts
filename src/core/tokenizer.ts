@@ -1,4 +1,3 @@
-import { List_get2, string_get13, StringMap_get3, StringMap_insert1 } from '../native-js.js';
 import { Log } from './log.js';
 import { Range } from './range.js';
 import { Source } from './source.js';
@@ -142,24 +141,24 @@ export const enum TokenPurpose {
 }
 
 export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Array<Token> {
-	let parts: Array<string> = source.contents.split(_tokenRegex);
-	let tokens: Array<Token> = [];
+	const parts: Array<string> = source.contents.split(_tokenRegex);
+	const tokens: Array<Token> = [];
 	let comments: Array<Range> = null;
 	let prevCommentTokenCount = 0;
 	let start = 0;
 
-	for (let i = 0, count1 = parts.length; i < count1; i = i + 1) {
-		let part = List_get2(parts, i);
-		let count = part.length;
-		let end = start + count;
-		let range = new Range(source, start, end);
+	for (let i = 0, count1 = parts.length; i < count1; i++) {
+		const part = parts[i];
+		const count = part.length;
+		const end = start + count;
+		const range = new Range(source, start, end);
 
 		if (i % 2 !== 0) {
-			let c = string_get13(part, 0);
+			const c = part.charCodeAt(0);
 
 			// Identifier
 			if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95) {
-				let keyword = StringMap_get3(keywords, part, TokenKind.END_OF_FILE);
+				const keyword = keywords.get(part) ?? TokenKind.END_OF_FILE;
 
 				if (keyword !== TokenKind.END_OF_FILE) {
 					tokens.push(new Token(range, keyword, comments));
@@ -178,7 +177,7 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Array
 			// Pragma
 			else if (c === 35) {
 				let kind = TokenKind.PRAGMA;
-				let value = part;
+				const value = part;
 
 				if (value === '#version') {
 					kind = TokenKind.VERSION;
@@ -198,7 +197,7 @@ export function tokenize(log: Log, source: Source, purpose: TokenPurpose): Array
 
 			// Operator
 			else {
-				let kind1 = StringMap_get3(operators, part, TokenKind.END_OF_FILE);
+				let kind1 = operators.get(part) ?? TokenKind.END_OF_FILE;
 
 				if (kind1 === TokenKind.END_OF_FILE) {
 					if (part.startsWith('//')) {
@@ -271,7 +270,7 @@ export function TokenKind_isIdentifierOrType(self: TokenKind): boolean {
 }
 
 // The order matters here due to greedy matching
-export let _tokenRegex: any = new RegExp(
+export const _tokenRegex: any = new RegExp(
 	'(' +
 		// Float literal
 		'\\.[0-9]+[eE][+-]?[0-9]+\\b|' + // Floating-point constant
@@ -295,559 +294,146 @@ export let _tokenRegex: any = new RegExp(
 		'"(?:[^"\\\\]|\\\\.)*"' + // String literal
 		')'
 );
-export let _intRegex: any = new RegExp('^(' + '[1-9][0-9]*|' + '0[0-7]*|' + '0[xX][0-9A-Fa-f]+' + ')$');
-export let keywords = StringMap_insert1(
-	StringMap_insert1(
-		StringMap_insert1(
-			StringMap_insert1(
-				StringMap_insert1(
-					StringMap_insert1(
-						StringMap_insert1(
-							StringMap_insert1(
-								StringMap_insert1(
-									StringMap_insert1(
-										StringMap_insert1(
-											StringMap_insert1(
-												StringMap_insert1(
-													StringMap_insert1(
-														StringMap_insert1(
-															StringMap_insert1(
-																StringMap_insert1(
-																	StringMap_insert1(
-																		StringMap_insert1(
-																			StringMap_insert1(
-																				StringMap_insert1(
-																					StringMap_insert1(
-																						StringMap_insert1(
-																							StringMap_insert1(
-																								StringMap_insert1(
-																									StringMap_insert1(
-																										StringMap_insert1(
-																											StringMap_insert1(
-																												StringMap_insert1(
-																													StringMap_insert1(
-																														StringMap_insert1(
-																															StringMap_insert1(
-																																StringMap_insert1(
-																																	StringMap_insert1(
-																																		StringMap_insert1(
-																																			StringMap_insert1(
-																																				StringMap_insert1(
-																																					StringMap_insert1(
-																																						StringMap_insert1(
-																																							StringMap_insert1(
-																																								StringMap_insert1(
-																																									StringMap_insert1(
-																																										StringMap_insert1(
-																																											StringMap_insert1(
-																																												new Map(),
-																																												'attribute',
-																																												TokenKind.ATTRIBUTE
-																																											),
-																																											'bool',
-																																											TokenKind.BOOL
-																																										),
-																																										'break',
-																																										TokenKind.BREAK
-																																									),
-																																									'bvec2',
-																																									TokenKind.BVEC2
-																																								),
-																																								'bvec3',
-																																								TokenKind.BVEC3
-																																							),
-																																							'bvec4',
-																																							TokenKind.BVEC4
-																																						),
-																																						'const',
-																																						TokenKind.CONST
-																																					),
-																																					'continue',
-																																					TokenKind.CONTINUE
-																																				),
-																																				'discard',
-																																				TokenKind.DISCARD
-																																			),
-																																			'do',
-																																			TokenKind.DO
-																																		),
-																																		'else',
-																																		TokenKind.ELSE
-																																	),
-																																	'false',
-																																	TokenKind.FALSE
-																																),
-																																'float',
-																																TokenKind.FLOAT
-																															),
-																															'for',
-																															TokenKind.FOR
-																														),
-																														'highp',
-																														TokenKind.HIGHP
-																													),
-																													'if',
-																													TokenKind.IF
-																												),
-																												'in',
-																												TokenKind.IN
-																											),
-																											'inout',
-																											TokenKind.INOUT
-																										),
-																										'int',
-																										TokenKind.INT
-																									),
-																									'invariant',
-																									TokenKind.INVARIANT
-																								),
-																								'ivec2',
-																								TokenKind.IVEC2
-																							),
-																							'ivec3',
-																							TokenKind.IVEC3
-																						),
-																						'ivec4',
-																						TokenKind.IVEC4
-																					),
-																					'lowp',
-																					TokenKind.LOWP
-																				),
-																				'mat2',
-																				TokenKind.MAT2
-																			),
-																			'mat3',
-																			TokenKind.MAT3
-																		),
-																		'mat4',
-																		TokenKind.MAT4
-																	),
-																	'mediump',
-																	TokenKind.MEDIUMP
-																),
-																'out',
-																TokenKind.OUT
-															),
-															'precision',
-															TokenKind.PRECISION
-														),
-														'return',
-														TokenKind.RETURN
-													),
-													'sampler2D',
-													TokenKind.SAMPLER2D
-												),
-												'samplerCube',
-												TokenKind.SAMPLERCUBE
-											),
-											'struct',
-											TokenKind.STRUCT
-										),
-										'true',
-										TokenKind.TRUE
-									),
-									'uniform',
-									TokenKind.UNIFORM
-								),
-								'varying',
-								TokenKind.VARYING
-							),
-							'vec2',
-							TokenKind.VEC2
-						),
-						'vec3',
-						TokenKind.VEC3
-					),
-					'vec4',
-					TokenKind.VEC4
-				),
-				'void',
-				TokenKind.VOID
-			),
-			'while',
-			TokenKind.WHILE
-		),
-		'export',
-		TokenKind.EXPORT
-	),
-	'import',
-	TokenKind.IMPORT
-);
-export let operators = StringMap_insert1(
-	StringMap_insert1(
-		StringMap_insert1(
-			StringMap_insert1(
-				StringMap_insert1(
-					StringMap_insert1(
-						StringMap_insert1(
-							StringMap_insert1(
-								StringMap_insert1(
-									StringMap_insert1(
-										StringMap_insert1(
-											StringMap_insert1(
-												StringMap_insert1(
-													StringMap_insert1(
-														StringMap_insert1(
-															StringMap_insert1(
-																StringMap_insert1(
-																	StringMap_insert1(
-																		StringMap_insert1(
-																			StringMap_insert1(
-																				StringMap_insert1(
-																					StringMap_insert1(
-																						StringMap_insert1(
-																							StringMap_insert1(
-																								StringMap_insert1(
-																									StringMap_insert1(
-																										StringMap_insert1(
-																											StringMap_insert1(
-																												StringMap_insert1(
-																													StringMap_insert1(
-																														StringMap_insert1(
-																															StringMap_insert1(
-																																StringMap_insert1(
-																																	StringMap_insert1(
-																																		StringMap_insert1(
-																																			StringMap_insert1(
-																																				StringMap_insert1(
-																																					StringMap_insert1(
-																																						StringMap_insert1(
-																																							StringMap_insert1(
-																																								StringMap_insert1(
-																																									StringMap_insert1(
-																																										StringMap_insert1(
-																																											StringMap_insert1(
-																																												StringMap_insert1(
-																																													new Map(),
-																																													'~',
-																																													TokenKind.COMPLEMENT
-																																												),
-																																												'--',
-																																												TokenKind.DECREMENT
-																																											),
-																																											'++',
-																																											TokenKind.INCREMENT
-																																										),
-																																										'!',
-																																										TokenKind.NOT
-																																									),
-																																									'&',
-																																									TokenKind.BITWISE_AND
-																																								),
-																																								'|',
-																																								TokenKind.BITWISE_OR
-																																							),
-																																							'^',
-																																							TokenKind.BITWISE_XOR
-																																						),
-																																						'/',
-																																						TokenKind.DIVIDE
-																																					),
-																																					'==',
-																																					TokenKind.EQUAL
-																																				),
-																																				'>',
-																																				TokenKind.GREATER_THAN
-																																			),
-																																			'>=',
-																																			TokenKind.GREATER_THAN_OR_EQUAL
-																																		),
-																																		'<',
-																																		TokenKind.LESS_THAN
-																																	),
-																																	'<=',
-																																	TokenKind.LESS_THAN_OR_EQUAL
-																																),
-																																'&&',
-																																TokenKind.LOGICAL_AND
-																															),
-																															'||',
-																															TokenKind.LOGICAL_OR
-																														),
-																														'^^',
-																														TokenKind.LOGICAL_XOR
-																													),
-																													'-',
-																													TokenKind.MINUS
-																												),
-																												'*',
-																												TokenKind.MULTIPLY
-																											),
-																											'!=',
-																											TokenKind.NOT_EQUAL
-																										),
-																										'+',
-																										TokenKind.PLUS
-																									),
-																									'%',
-																									TokenKind.REMAINDER
-																								),
-																								'<<',
-																								TokenKind.SHIFT_LEFT
-																							),
-																							'>>',
-																							TokenKind.SHIFT_RIGHT
-																						),
-																						'=',
-																						TokenKind.ASSIGN
-																					),
-																					'+=',
-																					TokenKind.ASSIGN_ADD
-																				),
-																				'&=',
-																				TokenKind.ASSIGN_BITWISE_AND
-																			),
-																			'|=',
-																			TokenKind.ASSIGN_BITWISE_OR
-																		),
-																		'^=',
-																		TokenKind.ASSIGN_BITWISE_XOR
-																	),
-																	'/=',
-																	TokenKind.ASSIGN_DIVIDE
-																),
-																'*=',
-																TokenKind.ASSIGN_MULTIPLY
-															),
-															'%=',
-															TokenKind.ASSIGN_REMAINDER
-														),
-														'<<=',
-														TokenKind.ASSIGN_SHIFT_LEFT
-													),
-													'>>=',
-													TokenKind.ASSIGN_SHIFT_RIGHT
-												),
-												'-=',
-												TokenKind.ASSIGN_SUBTRACT
-											),
-											':',
-											TokenKind.COLON
-										),
-										',',
-										TokenKind.COMMA
-									),
-									'.',
-									TokenKind.DOT
-								),
-								'{',
-								TokenKind.LEFT_BRACE
-							),
-							'[',
-							TokenKind.LEFT_BRACKET
-						),
-						'(',
-						TokenKind.LEFT_PARENTHESIS
-					),
-					'?',
-					TokenKind.QUESTION
-				),
-				'}',
-				TokenKind.RIGHT_BRACE
-			),
-			']',
-			TokenKind.RIGHT_BRACKET
-		),
-		')',
-		TokenKind.RIGHT_PARENTHESIS
-	),
-	';',
-	TokenKind.SEMICOLON
-);
-export let reservedWords = StringMap_insert1(
-	StringMap_insert1(
-		StringMap_insert1(
-			StringMap_insert1(
-				StringMap_insert1(
-					StringMap_insert1(
-						StringMap_insert1(
-							StringMap_insert1(
-								StringMap_insert1(
-									StringMap_insert1(
-										StringMap_insert1(
-											StringMap_insert1(
-												StringMap_insert1(
-													StringMap_insert1(
-														StringMap_insert1(
-															StringMap_insert1(
-																StringMap_insert1(
-																	StringMap_insert1(
-																		StringMap_insert1(
-																			StringMap_insert1(
-																				StringMap_insert1(
-																					StringMap_insert1(
-																						StringMap_insert1(
-																							StringMap_insert1(
-																								StringMap_insert1(
-																									StringMap_insert1(
-																										StringMap_insert1(
-																											StringMap_insert1(
-																												StringMap_insert1(
-																													StringMap_insert1(
-																														StringMap_insert1(
-																															StringMap_insert1(
-																																StringMap_insert1(
-																																	StringMap_insert1(
-																																		StringMap_insert1(
-																																			StringMap_insert1(
-																																				StringMap_insert1(
-																																					StringMap_insert1(
-																																						StringMap_insert1(
-																																							StringMap_insert1(
-																																								StringMap_insert1(
-																																									StringMap_insert1(
-																																										StringMap_insert1(
-																																											StringMap_insert1(
-																																												StringMap_insert1(
-																																													StringMap_insert1(
-																																														StringMap_insert1(
-																																															StringMap_insert1(
-																																																StringMap_insert1(
-																																																	new Map(),
-																																																	'asm',
-																																																	0
-																																																),
-																																																'cast',
-																																																0
-																																															),
-																																															'class',
-																																															0
-																																														),
-																																														'default',
-																																														0
-																																													),
-																																													'double',
-																																													0
-																																												),
-																																												'dvec2',
-																																												0
-																																											),
-																																											'dvec3',
-																																											0
-																																										),
-																																										'dvec4',
-																																										0
-																																									),
-																																									'enum',
-																																									0
-																																								),
-																																								'extern',
-																																								0
-																																							),
-																																							'external',
-																																							0
-																																						),
-																																						'fixed',
-																																						0
-																																					),
-																																					'flat',
-																																					0
-																																				),
-																																				'fvec2',
-																																				0
-																																			),
-																																			'fvec3',
-																																			0
-																																		),
-																																		'fvec4',
-																																		0
-																																	),
-																																	'goto',
-																																	0
-																																),
-																																'half',
-																																0
-																															),
-																															'hvec2',
-																															0
-																														),
-																														'hvec3',
-																														0
-																													),
-																													'hvec4',
-																													0
-																												),
-																												'inline',
-																												0
-																											),
-																											'input',
-																											0
-																										),
-																										'interface',
-																										0
-																									),
-																									'long',
-																									0
-																								),
-																								'namespace',
-																								0
-																							),
-																							'noinline',
-																							0
-																						),
-																						'output',
-																						0
-																					),
-																					'packed',
-																					0
-																				),
-																				'public',
-																				0
-																			),
-																			'sampler1D',
-																			0
-																		),
-																		'sampler1DShadow',
-																		0
-																	),
-																	'sampler2DRect',
-																	0
-																),
-																'sampler2DRectShadow',
-																0
-															),
-															'sampler2DShadow',
-															0
-														),
-														'sampler3D',
-														0
-													),
-													'sampler3DRect',
-													0
-												),
-												'short',
-												0
-											),
-											'sizeof',
-											0
-										),
-										'static',
-										0
-									),
-									'superp',
-									0
-								),
-								'switch',
-								0
-							),
-							'template',
-							0
-						),
-						'this',
-						0
-					),
-					'typedef',
-					0
-				),
-				'union',
-				0
-			),
-			'unsigned',
-			0
-		),
-		'using',
-		0
-	),
-	'volatile',
-	0
-);
+export const _intRegex: any = new RegExp('^(' + '[1-9][0-9]*|' + '0[0-7]*|' + '0[xX][0-9A-Fa-f]+' + ')$');
+
+export const keywords = new Map();
+keywords.set('attribute', TokenKind.ATTRIBUTE);
+keywords.set('bool', TokenKind.BOOL);
+keywords.set('break', TokenKind.BREAK);
+keywords.set('bvec2', TokenKind.BVEC2);
+keywords.set('bvec3', TokenKind.BVEC3);
+keywords.set('bvec4', TokenKind.BVEC4);
+keywords.set('const', TokenKind.CONST);
+keywords.set('continue', TokenKind.CONTINUE);
+keywords.set('discard', TokenKind.DISCARD);
+keywords.set('do', TokenKind.DO);
+keywords.set('else', TokenKind.ELSE);
+keywords.set('false', TokenKind.FALSE);
+keywords.set('float', TokenKind.FLOAT);
+keywords.set('for', TokenKind.FOR);
+keywords.set('highp', TokenKind.HIGHP);
+keywords.set('if', TokenKind.IF);
+keywords.set('in', TokenKind.IN);
+keywords.set('inout', TokenKind.INOUT);
+keywords.set('int', TokenKind.INT);
+keywords.set('invariant', TokenKind.INVARIANT);
+keywords.set('ivec2', TokenKind.IVEC2);
+keywords.set('ivec3', TokenKind.IVEC3);
+keywords.set('ivec4', TokenKind.IVEC4);
+keywords.set('lowp', TokenKind.LOWP);
+keywords.set('mat2', TokenKind.MAT2);
+keywords.set('mat3', TokenKind.MAT3);
+keywords.set('mat4', TokenKind.MAT4);
+keywords.set('mediump', TokenKind.MEDIUMP);
+keywords.set('out', TokenKind.OUT);
+keywords.set('precision', TokenKind.PRECISION);
+keywords.set('return', TokenKind.RETURN);
+keywords.set('sampler2D', TokenKind.SAMPLER2D);
+keywords.set('samplerCube', TokenKind.SAMPLERCUBE);
+keywords.set('struct', TokenKind.STRUCT);
+keywords.set('true', TokenKind.TRUE);
+keywords.set('uniform', TokenKind.UNIFORM);
+keywords.set('varying', TokenKind.VARYING);
+keywords.set('vec2', TokenKind.VEC2);
+keywords.set('vec3', TokenKind.VEC3);
+keywords.set('vec4', TokenKind.VEC4);
+keywords.set('void', TokenKind.VOID);
+keywords.set('while', TokenKind.WHILE);
+keywords.set('export', TokenKind.EXPORT);
+keywords.set('import', TokenKind.IMPORT);
+export const operators = new Map();
+operators.set('~', TokenKind.COMPLEMENT);
+operators.set('--', TokenKind.DECREMENT);
+operators.set('++', TokenKind.INCREMENT);
+operators.set('!', TokenKind.NOT);
+operators.set('&', TokenKind.BITWISE_AND);
+operators.set('|', TokenKind.BITWISE_OR);
+operators.set('^', TokenKind.BITWISE_XOR);
+operators.set('/', TokenKind.DIVIDE);
+operators.set('==', TokenKind.EQUAL);
+operators.set('>', TokenKind.GREATER_THAN);
+operators.set('>=', TokenKind.GREATER_THAN_OR_EQUAL);
+operators.set('<', TokenKind.LESS_THAN);
+operators.set('<=', TokenKind.LESS_THAN_OR_EQUAL);
+operators.set('&&', TokenKind.LOGICAL_AND);
+operators.set('||', TokenKind.LOGICAL_OR);
+operators.set('^^', TokenKind.LOGICAL_XOR);
+operators.set('-', TokenKind.MINUS);
+operators.set('*', TokenKind.MULTIPLY);
+operators.set('!=', TokenKind.NOT_EQUAL);
+operators.set('+', TokenKind.PLUS);
+operators.set('%', TokenKind.REMAINDER);
+operators.set('<<', TokenKind.SHIFT_LEFT);
+operators.set('>>', TokenKind.SHIFT_RIGHT);
+operators.set('=', TokenKind.ASSIGN);
+operators.set('+=', TokenKind.ASSIGN_ADD);
+operators.set('&=', TokenKind.ASSIGN_BITWISE_AND);
+operators.set('|=', TokenKind.ASSIGN_BITWISE_OR);
+operators.set('^=', TokenKind.ASSIGN_BITWISE_XOR);
+operators.set('/=', TokenKind.ASSIGN_DIVIDE);
+operators.set('*=', TokenKind.ASSIGN_MULTIPLY);
+operators.set('%=', TokenKind.ASSIGN_REMAINDER);
+operators.set('<<=', TokenKind.ASSIGN_SHIFT_LEFT);
+operators.set('>>=', TokenKind.ASSIGN_SHIFT_RIGHT);
+operators.set('-=', TokenKind.ASSIGN_SUBTRACT);
+operators.set(':', TokenKind.COLON);
+operators.set(',', TokenKind.COMMA);
+operators.set('.', TokenKind.DOT);
+operators.set('{', TokenKind.LEFT_BRACE);
+operators.set('[', TokenKind.LEFT_BRACKET);
+operators.set('(', TokenKind.LEFT_PARENTHESIS);
+operators.set('?', TokenKind.QUESTION);
+operators.set('}', TokenKind.RIGHT_BRACE);
+operators.set(']', TokenKind.RIGHT_BRACKET);
+operators.set(')', TokenKind.RIGHT_PARENTHESIS);
+operators.set(';', TokenKind.SEMICOLON);
+export const reservedWords = new Map();
+reservedWords.set('asm', 0);
+reservedWords.set('cast', 0);
+reservedWords.set('class', 0);
+reservedWords.set('default', 0);
+reservedWords.set('double', 0);
+reservedWords.set('dvec2', 0);
+reservedWords.set('dvec3', 0);
+reservedWords.set('dvec4', 0);
+reservedWords.set('enum', 0);
+reservedWords.set('extern', 0);
+reservedWords.set('external', 0);
+reservedWords.set('fixed', 0);
+reservedWords.set('flat', 0);
+reservedWords.set('fvec2', 0);
+reservedWords.set('fvec3', 0);
+reservedWords.set('fvec4', 0);
+reservedWords.set('goto', 0);
+reservedWords.set('half', 0);
+reservedWords.set('hvec2', 0);
+reservedWords.set('hvec3', 0);
+reservedWords.set('hvec4', 0);
+reservedWords.set('inline', 0);
+reservedWords.set('input', 0);
+reservedWords.set('interface', 0);
+reservedWords.set('long', 0);
+reservedWords.set('namespace', 0);
+reservedWords.set('noinline', 0);
+reservedWords.set('output', 0);
+reservedWords.set('packed', 0);
+reservedWords.set('public', 0);
+reservedWords.set('sampler1D', 0);
+reservedWords.set('sampler1DShadow', 0);
+reservedWords.set('sampler2DRect', 0);
+reservedWords.set('sampler2DRectShadow', 0);
+reservedWords.set('sampler2DShadow', 0);
+reservedWords.set('sampler3D', 0);
+reservedWords.set('sampler3DRect', 0);
+reservedWords.set('short', 0);
+reservedWords.set('sizeof', 0);
+reservedWords.set('static', 0);
+reservedWords.set('superp', 0);
+reservedWords.set('switch', 0);
+reservedWords.set('template', 0);
+reservedWords.set('this', 0);
+reservedWords.set('typedef', 0);
+reservedWords.set('union', 0);
+reservedWords.set('unsigned', 0);
+reservedWords.set('using', 0);
+reservedWords.set('volatile', 0);
